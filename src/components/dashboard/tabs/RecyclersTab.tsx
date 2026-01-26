@@ -1,13 +1,17 @@
-import { Skeleton, Statistic, Progress, Table, Tag, Divider } from 'antd';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
-import { Recycle, ArrowRight, TrendingUp } from 'lucide-react';
-import { plasticBreakdown, recyclerStats, recyclerSummary, recyclerTrendData } from '@/data/dashboardData';
+import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space } from 'antd';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet } from 'lucide-react';
+import { plasticBreakdown, recyclerStats, recyclerSummary, recyclerTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
+import { exportToCSV, exportToExcel, prepareRecyclerDataForExport } from '@/utils/exportUtils';
 
 interface RecyclersTabProps {
   isLoading: boolean;
+  filters: FilterState;
 }
 
-const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
+const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
+  const financialYear = getFinancialYear(filters.dateFrom);
+  
   const pieData = plasticBreakdown.map(item => ({
     name: item.type,
     value: item.quantity,
@@ -17,7 +21,7 @@ const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
 
   const recycleRatio = recyclerSummary.efficiency;
 
-  // Plastic Breakdown Table Columns
+  // Plastic Breakdown Table Columns with additional columns
   const plasticColumns = [
     {
       title: 'Plastic Type',
@@ -44,6 +48,21 @@ const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
         <Tag color="processing">{value}%</Tag>
       ),
     },
+    {
+      title: 'Target Market',
+      dataIndex: 'targetMarket',
+      key: 'targetMarket',
+    },
+    {
+      title: 'Financial Year',
+      dataIndex: 'financialYear',
+      key: 'financialYear',
+    },
+    {
+      title: 'Plant',
+      dataIndex: 'plant',
+      key: 'plant',
+    },
   ];
 
   // Recycler Stats Table Columns
@@ -64,7 +83,52 @@ const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
         </span>
       ),
     },
+    {
+      title: 'Target Market',
+      dataIndex: 'targetMarket',
+      key: 'targetMarket',
+    },
+    {
+      title: 'Financial Year',
+      dataIndex: 'financialYear',
+      key: 'financialYear',
+    },
+    {
+      title: 'Plant',
+      dataIndex: 'plant',
+      key: 'plant',
+    },
   ];
+
+  // Export handlers
+  const handleExportCSV = () => {
+    const data = prepareRecyclerDataForExport(plasticBreakdown);
+    exportToCSV(data, 'Recyclers_Plastic_Breakdown', filters);
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel(
+      [
+        { name: 'Plastic Breakdown', data: prepareRecyclerDataForExport(plasticBreakdown) },
+        { name: 'Recycler Statistics', data: recyclerStats.map(s => ({
+          'Metric': s.metric,
+          'Value': s.value,
+          'Unit': s.unit,
+          'Target Market': s.targetMarket,
+          'Financial Year': s.financialYear,
+          'Plant': s.plant,
+        })) },
+        { name: 'Monthly Trend', data: recyclerTrendData.map(t => ({
+          'Month': t.month,
+          'Input (MT)': t.input,
+          'Output (MT)': t.output,
+          'Efficiency %': ((t.output / t.input) * 100).toFixed(2) + '%',
+        })) },
+      ],
+      'Recyclers_Material_Processing',
+      filters
+    );
+  };
 
   if (isLoading) {
     return (
@@ -76,10 +140,30 @@ const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Section Title */}
-      <div>
-        <h2 className="text-xl font-semibold text-foreground mb-1">Material Processing (Recyclers)</h2>
-        <p className="text-sm text-muted-foreground">Plastic breakdown and recycling efficiency metrics</p>
+      {/* Section Title with Export Buttons */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground mb-1">Recyclers Overview - Material Processing</h2>
+          <p className="text-sm text-muted-foreground">
+            Plastic breakdown and recycling efficiency metrics • FY {financialYear}
+          </p>
+        </div>
+        <Space>
+          <Button 
+            icon={<Download className="w-4 h-4" />} 
+            onClick={handleExportCSV}
+          >
+            Export CSV
+          </Button>
+          <Button 
+            type="primary"
+            icon={<FileSpreadsheet className="w-4 h-4" />} 
+            onClick={handleExportExcel}
+            className="bg-[#4b6043] hover:bg-[#5a7350]"
+          >
+            Export XLSX
+          </Button>
+        </Space>
       </div>
 
       {/* Summary Stats Cards */}
@@ -161,6 +245,7 @@ const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
               dataSource={plasticBreakdown.map((item, i) => ({ ...item, key: i }))}
               pagination={false}
               size="middle"
+              scroll={{ x: 500 }}
             />
 
             {/* Summary below table */}
@@ -231,6 +316,7 @@ const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
               dataSource={recyclerStats.map((item, i) => ({ ...item, key: i }))}
               pagination={false}
               size="middle"
+              scroll={{ x: 500 }}
             />
           </div>
         </div>
@@ -240,7 +326,7 @@ const RecyclersTab = ({ isLoading }: RecyclersTabProps) => {
 
       {/* Monthly Trend */}
       <div className="bg-card rounded-xl p-6 shadow-card">
-        <h3 className="text-lg font-semibold mb-4">Monthly Input vs Output Trend</h3>
+        <h3 className="text-lg font-semibold mb-4">Monthly Input vs Output Trend (FY {financialYear})</h3>
         <div className="h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={recyclerTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>

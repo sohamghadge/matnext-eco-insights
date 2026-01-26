@@ -1,34 +1,55 @@
-// Dashboard data extracted from Excel file - Complete Dataset
+// Dashboard data extracted from Excel file - Complete Dataset with all 21 materials
 
 export interface FilterState {
-  year: string;
-  month: string;
+  dateFrom: Date;
+  dateTo: Date;
   plant: string;
   targetMarket: string;
   sourcedFromELV: string;
-  material: string;
+  materials: string[];
 }
 
 export const defaultFilters: FilterState = {
-  year: '2025-26',
-  month: 'Apr',
+  dateFrom: new Date('2026-01-01'),
+  dateTo: new Date('2026-01-31'),
   plant: 'All',
   targetMarket: 'Domestic',
   sourcedFromELV: 'Yes',
-  material: 'All',
+  materials: ['Steel', 'Aluminium', 'Copper', 'Plastic'],
 };
 
 export const filterOptions = {
-  years: ['2024-25', '2025-26', '2026-27'],
-  months: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
   plants: ['All', 'Gurgaon', 'Manesar', 'Gujarat'],
   targetMarkets: ['Domestic', 'Export'],
   sourcedFromELV: ['Yes', 'No'],
-  materials: ['All', 'Steel', 'Plastic', 'Cast Iron', 'Li-ion'],
+  // All 21 materials from the screenshot
+  allMaterials: [
+    'Steel',
+    'Aluminium', 
+    'Copper',
+    'Plastic',
+    'Glass',
+    'Paper',
+    'Textile',
+    'E-Waste',
+    'Battery',
+    'Used Oil',
+    'Rubber',
+    'Cast Iron',
+    'Black Mass',
+    'Platinum/Palladium',
+    'Freon',
+    'Foam',
+    'Lead',
+    'Mix',
+    'Lead Acid Battery',
+    'Waste',
+    'Zinc',
+  ],
 };
 
 // ============================================
-// TAB 1: MSIL (Corporate) Data
+// TAB 1: MSIL (Corporate) Data - All 21 Materials
 // ============================================
 
 export interface MaterialTarget {
@@ -37,42 +58,78 @@ export interface MaterialTarget {
   achieved: number;
   percentage: number;
   unit: string;
+  targetMarket: string;
+  financialYear: string;
+  plant: string;
+  sourcedFromELV: string;
 }
 
+// All 21 materials with comprehensive data
 export const materialTargets: MaterialTarget[] = [
-  { material: 'Steel', target: 1000, achieved: 100, percentage: 10.00, unit: 'MT' },
-  { material: 'Plastic', target: 800, achieved: 50, percentage: 6.25, unit: 'MT' },
-  { material: 'Cast Iron', target: 500, achieved: 40, percentage: 8.00, unit: 'MT' },
-  { material: 'Li-ion Batteries', target: 200, achieved: 10, percentage: 5.00, unit: 'MT' },
+  { material: 'Steel', target: 1000, achieved: 100, percentage: 10.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Aluminium', target: 500, achieved: 45, percentage: 9.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Copper', target: 300, achieved: 28, percentage: 9.33, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'Plastic', target: 800, achieved: 50, percentage: 6.25, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Glass', target: 400, achieved: 35, percentage: 8.75, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Paper', target: 200, achieved: 18, percentage: 9.00, unit: 'MT', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
+  { material: 'Textile', target: 150, achieved: 12, percentage: 8.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'E-Waste', target: 250, achieved: 22, percentage: 8.80, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Battery', target: 180, achieved: 15, percentage: 8.33, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Used Oil', target: 120, achieved: 10, percentage: 8.33, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
+  { material: 'Rubber', target: 350, achieved: 30, percentage: 8.57, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'Cast Iron', target: 500, achieved: 40, percentage: 8.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Black Mass', target: 100, achieved: 8, percentage: 8.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Platinum/Palladium', target: 50, achieved: 4, percentage: 8.00, unit: 'KG', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Freon', target: 80, achieved: 6, percentage: 7.50, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'No' },
+  { material: 'Foam', target: 220, achieved: 18, percentage: 8.18, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Lead', target: 160, achieved: 13, percentage: 8.13, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Mix', target: 300, achieved: 25, percentage: 8.33, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Lead Acid Battery', target: 200, achieved: 10, percentage: 5.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'Waste', target: 400, achieved: 35, percentage: 8.75, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
+  { material: 'Zinc', target: 140, achieved: 12, percentage: 8.57, unit: 'MT', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
 ];
 
 export interface ModelRecycledContent {
   model: string;
   recycledContentPercent: number;
   status: 'compliant' | 'warning' | 'critical';
+  targetMarket: string;
+  financialYear: string;
+  plant: string;
 }
 
 export const modelRecycledContent: ModelRecycledContent[] = [
-  { model: 'Fronx', recycledContentPercent: 0.010, status: 'compliant' },
-  { model: 'Wagon-R', recycledContentPercent: 0.005, status: 'compliant' },
-  { model: 'Alto', recycledContentPercent: 0.008, status: 'compliant' },
-  { model: 'Super Carry', recycledContentPercent: 0.004, status: 'compliant' },
+  { model: 'Fronx', recycledContentPercent: 0.010, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { model: 'Wagon-R', recycledContentPercent: 0.005, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar' },
+  { model: 'Alto', recycledContentPercent: 0.008, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { model: 'Super Carry', recycledContentPercent: 0.004, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat' },
+  { model: 'Swift', recycledContentPercent: 0.012, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { model: 'Baleno', recycledContentPercent: 0.009, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar' },
+  { model: 'Dzire', recycledContentPercent: 0.007, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon' },
+  { model: 'Ertiga', recycledContentPercent: 0.011, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat' },
 ];
 
 export interface PartRecycledContent {
   part: string;
   recycledContentPercent: number;
+  targetMarket: string;
+  financialYear: string;
+  plant: string;
 }
 
 export const partRecycledContent: PartRecycledContent[] = [
-  { part: 'Front Bumper', recycledContentPercent: 0.50 },
-  { part: 'Rear Bumper', recycledContentPercent: 0.40 },
-  { part: 'Dashboard', recycledContentPercent: 0.20 },
-  { part: 'Door Panels', recycledContentPercent: 0.50 },
+  { part: 'Front Bumper', recycledContentPercent: 0.50, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { part: 'Rear Bumper', recycledContentPercent: 0.40, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { part: 'Dashboard', recycledContentPercent: 0.20, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar' },
+  { part: 'Door Panels', recycledContentPercent: 0.50, targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat' },
+  { part: 'Wheel Arch', recycledContentPercent: 0.35, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { part: 'Engine Cover', recycledContentPercent: 0.28, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar' },
+  { part: 'Fender Liners', recycledContentPercent: 0.45, targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat' },
+  { part: 'Trunk Liner', recycledContentPercent: 0.38, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
 ];
 
 // ============================================
-// TAB 2: RVSF (Scrapping & EPR) Data
+// TAB 2: RVSF (Scrapping & EPR) Data - All Materials
 // ============================================
 
 export interface EPRCreditData {
@@ -80,13 +137,34 @@ export interface EPRCreditData {
   creditsGenerated: number;
   dispatchVolume: number;
   unit: string;
+  targetMarket: string;
+  financialYear: string;
+  plant: string;
+  sourcedFromELV: string;
 }
 
 export const eprCreditData: EPRCreditData[] = [
-  { material: 'Steel', creditsGenerated: 1245.67, dispatchVolume: 1300, unit: 'MT' },
-  { material: 'Plastic', creditsGenerated: 456.23, dispatchVolume: 500, unit: 'MT' },
-  { material: 'Cast Iron', creditsGenerated: 234.89, dispatchVolume: 250, unit: 'MT' },
-  { material: 'Li-ion Batteries', creditsGenerated: 89.45, dispatchVolume: 100, unit: 'MT' },
+  { material: 'Steel', creditsGenerated: 1245.67, dispatchVolume: 1300, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Aluminium', creditsGenerated: 567.34, dispatchVolume: 600, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Copper', creditsGenerated: 234.56, dispatchVolume: 250, unit: 'MT', targetMarket: 'Export', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'Plastic', creditsGenerated: 456.23, dispatchVolume: 500, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Glass', creditsGenerated: 178.90, dispatchVolume: 200, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Paper', creditsGenerated: 89.12, dispatchVolume: 100, unit: 'MT', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
+  { material: 'Textile', creditsGenerated: 67.45, dispatchVolume: 75, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'E-Waste', creditsGenerated: 145.67, dispatchVolume: 160, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Battery', creditsGenerated: 112.34, dispatchVolume: 120, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Used Oil', creditsGenerated: 78.90, dispatchVolume: 85, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
+  { material: 'Rubber', creditsGenerated: 189.45, dispatchVolume: 200, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'Cast Iron', creditsGenerated: 234.89, dispatchVolume: 250, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Black Mass', creditsGenerated: 45.67, dispatchVolume: 50, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Platinum/Palladium', creditsGenerated: 12.34, dispatchVolume: 15, unit: 'KG', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Freon', creditsGenerated: 34.56, dispatchVolume: 40, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'No' },
+  { material: 'Foam', creditsGenerated: 98.76, dispatchVolume: 110, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Lead', creditsGenerated: 87.65, dispatchVolume: 95, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Mix', creditsGenerated: 156.78, dispatchVolume: 170, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { material: 'Lead Acid Battery', creditsGenerated: 89.45, dispatchVolume: 100, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { material: 'Waste', creditsGenerated: 234.56, dispatchVolume: 250, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
+  { material: 'Zinc', creditsGenerated: 67.89, dispatchVolume: 75, unit: 'MT', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
 ];
 
 export interface PortalIntegration {
@@ -120,24 +198,30 @@ export interface PlasticBreakdown {
   quantity: number;
   percentage: number;
   color: string;
+  targetMarket: string;
+  financialYear: string;
+  plant: string;
 }
 
 export const plasticBreakdown: PlasticBreakdown[] = [
-  { type: 'Painted Plastic', quantity: 50, percentage: 50, color: '#10b981' },
-  { type: 'Unpainted Plastic', quantity: 40, percentage: 40, color: '#3b82f6' },
-  { type: 'PP (Polypropylene)', quantity: 10, percentage: 10, color: '#f59e0b' },
+  { type: 'Painted Plastic', quantity: 50, percentage: 50, color: '#10b981', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { type: 'Unpainted Plastic', quantity: 40, percentage: 40, color: '#3b82f6', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar' },
+  { type: 'PP (Polypropylene)', quantity: 10, percentage: 10, color: '#f59e0b', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat' },
 ];
 
 export interface RecyclerStats {
   metric: string;
   value: number;
   unit: string;
+  targetMarket: string;
+  financialYear: string;
+  plant: string;
 }
 
 export const recyclerStats: RecyclerStats[] = [
-  { metric: 'Recycled Material Weight', value: 5.00, unit: 'MT' },
-  { metric: 'Total Material Supplied', value: 100.00, unit: 'MT' },
-  { metric: 'Recycling Efficiency', value: 5.00, unit: '%' },
+  { metric: 'Recycled Material Weight', value: 5.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { metric: 'Total Material Supplied', value: 100.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { metric: 'Recycling Efficiency', value: 5.00, unit: '%', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
 ];
 
 export const recyclerSummary = {
@@ -157,18 +241,27 @@ export interface ComponentData {
   recycledWeight: number;
   totalWeight: number;
   ecoScore: number;
+  targetMarket: string;
+  financialYear: string;
+  plant: string;
+  sourcedFromELV: string;
 }
 
 export const componentData: ComponentData[] = [
-  { partName: 'Front Bumper', quantity: 80, unit: 'Nos.', recycledWeight: 2.0, totalWeight: 40, ecoScore: 5.0 },
-  { partName: 'Rear Bumper', quantity: 70, unit: 'Nos.', recycledWeight: 1.5, totalWeight: 35, ecoScore: 4.3 },
-  { partName: 'Interior Parts', quantity: 15, unit: 'Nos.', recycledWeight: 1.5, totalWeight: 25, ecoScore: 6.0 },
+  { partName: 'Front Bumper', quantity: 80, unit: 'Nos.', recycledWeight: 2.0, totalWeight: 40, ecoScore: 5.0, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { partName: 'Rear Bumper', quantity: 70, unit: 'Nos.', recycledWeight: 1.5, totalWeight: 35, ecoScore: 4.3, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { partName: 'Interior Parts', quantity: 15, unit: 'Nos.', recycledWeight: 1.5, totalWeight: 25, ecoScore: 6.0, targetMarket: 'Export', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { partName: 'Dashboard Panel', quantity: 45, unit: 'Nos.', recycledWeight: 1.2, totalWeight: 30, ecoScore: 4.0, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { partName: 'Door Trim', quantity: 120, unit: 'Nos.', recycledWeight: 2.8, totalWeight: 48, ecoScore: 5.8, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
+  { partName: 'Wheel Arch Liner', quantity: 90, unit: 'Nos.', recycledWeight: 1.8, totalWeight: 36, ecoScore: 5.0, targetMarket: 'Export', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
+  { partName: 'Engine Cover', quantity: 55, unit: 'Nos.', recycledWeight: 1.0, totalWeight: 22, ecoScore: 4.5, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
+  { partName: 'Trunk Liner', quantity: 65, unit: 'Nos.', recycledWeight: 1.3, totalWeight: 26, ecoScore: 5.0, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
 ];
 
 export const supplierSummary = {
   recycledMaterialWeight: 5.00,
   totalMaterialSupplied: 100.00,
-  totalComponents: 165,
+  totalComponents: 540,
 };
 
 // ============================================
@@ -176,18 +269,18 @@ export const supplierSummary = {
 // ============================================
 
 export const materialTrendData = [
-  { month: 'Apr', steel: 100, plastic: 50, castIron: 40, liion: 10 },
-  { month: 'May', steel: 150, plastic: 80, castIron: 55, liion: 18 },
-  { month: 'Jun', steel: 220, plastic: 120, castIron: 75, liion: 28 },
-  { month: 'Jul', steel: 310, plastic: 170, castIron: 100, liion: 40 },
-  { month: 'Aug', steel: 420, plastic: 230, castIron: 130, liion: 55 },
-  { month: 'Sep', steel: 550, plastic: 300, castIron: 165, liion: 72 },
-  { month: 'Oct', steel: 680, plastic: 380, castIron: 205, liion: 92 },
-  { month: 'Nov', steel: 780, plastic: 450, castIron: 250, liion: 115 },
-  { month: 'Dec', steel: 850, plastic: 520, castIron: 300, liion: 140 },
-  { month: 'Jan', steel: 920, plastic: 600, castIron: 360, liion: 165 },
-  { month: 'Feb', steel: 970, plastic: 680, castIron: 420, liion: 185 },
-  { month: 'Mar', steel: 1000, plastic: 750, castIron: 480, liion: 200 },
+  { month: 'Apr', steel: 100, plastic: 50, castIron: 40, aluminium: 45, copper: 28, glass: 35, rubber: 30 },
+  { month: 'May', steel: 150, plastic: 80, castIron: 55, aluminium: 68, copper: 42, glass: 52, rubber: 45 },
+  { month: 'Jun', steel: 220, plastic: 120, castIron: 75, aluminium: 100, copper: 62, glass: 78, rubber: 67 },
+  { month: 'Jul', steel: 310, plastic: 170, castIron: 100, aluminium: 140, copper: 88, glass: 110, rubber: 94 },
+  { month: 'Aug', steel: 420, plastic: 230, castIron: 130, aluminium: 190, copper: 118, glass: 148, rubber: 128 },
+  { month: 'Sep', steel: 550, plastic: 300, castIron: 165, aluminium: 250, copper: 155, glass: 195, rubber: 168 },
+  { month: 'Oct', steel: 680, plastic: 380, castIron: 205, aluminium: 320, copper: 198, glass: 248, rubber: 215 },
+  { month: 'Nov', steel: 780, plastic: 450, castIron: 250, aluminium: 380, copper: 238, glass: 298, rubber: 258 },
+  { month: 'Dec', steel: 850, plastic: 520, castIron: 300, aluminium: 420, copper: 268, glass: 340, rubber: 295 },
+  { month: 'Jan', steel: 920, plastic: 600, castIron: 360, aluminium: 465, copper: 290, glass: 375, rubber: 325 },
+  { month: 'Feb', steel: 970, plastic: 680, castIron: 420, aluminium: 490, copper: 305, glass: 395, rubber: 348 },
+  { month: 'Mar', steel: 1000, plastic: 750, castIron: 480, aluminium: 500, copper: 315, glass: 410, rubber: 365 },
 ];
 
 export const eprTrendData = [
@@ -209,10 +302,20 @@ export const recyclerTrendData = [
 ];
 
 export const componentTrendData = [
-  { month: 'Apr', frontBumper: 80, rearBumper: 70, interior: 15 },
-  { month: 'May', frontBumper: 95, rearBumper: 82, interior: 22 },
-  { month: 'Jun', frontBumper: 112, rearBumper: 96, interior: 30 },
-  { month: 'Jul', frontBumper: 130, rearBumper: 112, interior: 38 },
-  { month: 'Aug', frontBumper: 150, rearBumper: 130, interior: 48 },
-  { month: 'Sep', frontBumper: 172, rearBumper: 150, interior: 58 },
+  { month: 'Apr', frontBumper: 80, rearBumper: 70, interior: 15, dashboard: 45 },
+  { month: 'May', frontBumper: 95, rearBumper: 82, interior: 22, dashboard: 52 },
+  { month: 'Jun', frontBumper: 112, rearBumper: 96, interior: 30, dashboard: 60 },
+  { month: 'Jul', frontBumper: 130, rearBumper: 112, interior: 38, dashboard: 70 },
+  { month: 'Aug', frontBumper: 150, rearBumper: 130, interior: 48, dashboard: 82 },
+  { month: 'Sep', frontBumper: 172, rearBumper: 150, interior: 58, dashboard: 95 },
 ];
+
+// Helper function to get financial year from date
+export const getFinancialYear = (date: Date): string => {
+  const month = date.getMonth();
+  const year = date.getFullYear();
+  if (month >= 3) { // April onwards
+    return `${year}-${(year + 1).toString().slice(2)}`;
+  }
+  return `${year - 1}-${year.toString().slice(2)}`;
+};

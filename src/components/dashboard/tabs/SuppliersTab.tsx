@@ -1,13 +1,17 @@
-import { Table, Tag, Progress, Skeleton, Statistic, Divider } from 'antd';
-import { Star, Package, TrendingUp } from 'lucide-react';
+import { Table, Tag, Progress, Skeleton, Statistic, Divider, Button, Space } from 'antd';
+import { Star, Package, Download, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { componentData, supplierSummary, componentTrendData } from '@/data/dashboardData';
+import { componentData, supplierSummary, componentTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
+import { exportToCSV, exportToExcel, prepareComponentDataForExport } from '@/utils/exportUtils';
 
 interface SuppliersTabProps {
   isLoading: boolean;
+  filters: FilterState;
 }
 
-const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
+const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
+  const financialYear = getFinancialYear(filters.dateFrom);
+  
   const getEcoScoreColor = (score: number) => {
     if (score >= 5) return 'success';
     if (score >= 4) return 'warning';
@@ -25,6 +29,7 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
       title: 'Part Name',
       dataIndex: 'partName',
       key: 'partName',
+      fixed: 'left' as const,
       render: (text: string) => (
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-muted-foreground" />
@@ -94,6 +99,29 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
         </div>
       ),
     },
+    {
+      title: 'Target Market',
+      dataIndex: 'targetMarket',
+      key: 'targetMarket',
+    },
+    {
+      title: 'Financial Year',
+      dataIndex: 'financialYear',
+      key: 'financialYear',
+    },
+    {
+      title: 'Plant',
+      dataIndex: 'plant',
+      key: 'plant',
+    },
+    {
+      title: 'Sourced from ELV',
+      dataIndex: 'sourcedFromELV',
+      key: 'sourcedFromELV',
+      render: (value: string) => (
+        <Tag color={value === 'Yes' ? 'green' : 'default'}>{value}</Tag>
+      ),
+    },
   ];
 
   // Bar chart data for component quantities
@@ -104,10 +132,11 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
   }));
 
   // Pie chart for distribution
+  const pieColors = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
   const pieData = componentData.map((item, index) => ({
     name: item.partName,
     value: item.quantity,
-    color: ['#10b981', '#3b82f6', '#f59e0b'][index],
+    color: pieColors[index % pieColors.length],
   }));
 
   // Eco-score chart data
@@ -115,6 +144,35 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
     name: item.partName,
     score: item.ecoScore,
   }));
+
+  // Export handlers
+  const handleExportCSV = () => {
+    const data = prepareComponentDataForExport(componentData);
+    exportToCSV(data, 'Suppliers_Component_Tracking', filters);
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel(
+      [
+        { name: 'Component Tracking', data: prepareComponentDataForExport(componentData) },
+        { name: 'Monthly Trend', data: componentTrendData.map(t => ({
+          'Month': t.month,
+          'Front Bumper': t.frontBumper,
+          'Rear Bumper': t.rearBumper,
+          'Interior Parts': t.interior,
+          'Dashboard': t.dashboard,
+        })) },
+        { name: 'Summary', data: [{
+          'Total Components': supplierSummary.totalComponents,
+          'Recycled Material Weight (MT)': supplierSummary.recycledMaterialWeight,
+          'Total Material Supplied (MT)': supplierSummary.totalMaterialSupplied,
+          'Average Eco-Score': (componentData.reduce((sum, item) => sum + item.ecoScore, 0) / componentData.length).toFixed(1),
+        }] },
+      ],
+      'Suppliers_Supply_Chain',
+      filters
+    );
+  };
 
   if (isLoading) {
     return (
@@ -126,10 +184,30 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Section Title */}
-      <div>
-        <h2 className="text-xl font-semibold text-foreground mb-1">Supply Chain (Suppliers)</h2>
-        <p className="text-sm text-muted-foreground">Component tracking and sustainability scoring</p>
+      {/* Section Title with Export Buttons */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground mb-1">Suppliers Overview - Supply Chain</h2>
+          <p className="text-sm text-muted-foreground">
+            Component tracking and sustainability scoring • FY {financialYear}
+          </p>
+        </div>
+        <Space>
+          <Button 
+            icon={<Download className="w-4 h-4" />} 
+            onClick={handleExportCSV}
+          >
+            Export CSV
+          </Button>
+          <Button 
+            type="primary"
+            icon={<FileSpreadsheet className="w-4 h-4" />} 
+            onClick={handleExportExcel}
+            className="bg-[#4b6043] hover:bg-[#5a7350]"
+          >
+            Export XLSX
+          </Button>
+        </Space>
       </div>
 
       {/* Summary Stats Cards */}
@@ -184,9 +262,16 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
             <h4 className="text-sm font-medium text-muted-foreground mb-3">Component Quantities</h4>
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    angle={-30}
+                    textAnchor="end"
+                    height={50}
+                    interval={0}
+                  />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{
@@ -216,7 +301,7 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
                     outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
+                    label={({ name, value }) => `${value}`}
                     labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
                   >
                     {pieData.map((entry, index) => (
@@ -231,6 +316,7 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
                       borderRadius: '8px',
                     }}
                   />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -241,8 +327,9 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
         <Table
           columns={columns}
           dataSource={componentData.map((item, i) => ({ ...item, key: i }))}
-          pagination={false}
+          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} components` }}
           size="middle"
+          scroll={{ x: 1400 }}
         />
 
         {/* Summary Stats */}
@@ -275,12 +362,12 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
         {/* Eco-Score Comparison */}
         <div className="bg-card rounded-xl p-6 shadow-card">
           <h3 className="text-lg font-semibold mb-4">Eco-Score by Component</h3>
-          <div className="h-[250px]">
+          <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ecoScoreData} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
+              <BarChart data={ecoScoreData} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis type="number" domain={[0, 10]} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                <YAxis dataKey="name" type="category" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={90} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
@@ -301,8 +388,8 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
 
         {/* Monthly Trend */}
         <div className="bg-card rounded-xl p-6 shadow-card">
-          <h3 className="text-lg font-semibold mb-4">Monthly Component Volume Trend</h3>
-          <div className="h-[250px]">
+          <h3 className="text-lg font-semibold mb-4">Monthly Component Volume Trend (FY {financialYear})</h3>
+          <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={componentTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -319,6 +406,7 @@ const SuppliersTab = ({ isLoading }: SuppliersTabProps) => {
                 <Line type="monotone" dataKey="frontBumper" name="Front Bumper" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="rearBumper" name="Rear Bumper" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="interior" name="Interior Parts" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="dashboard" name="Dashboard" stroke="#ec4899" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

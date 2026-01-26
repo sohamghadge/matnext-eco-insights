@@ -1,16 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Badge, Skeleton, Card, Statistic, Table, Tag, Divider } from 'antd';
-import { Link2, Shield, RefreshCw, Zap, CheckCircle, Clock, ExternalLink } from 'lucide-react';
+import { Badge, Skeleton, Statistic, Table, Tag, Divider, Button, Space } from 'antd';
+import { Link2, Shield, RefreshCw, Zap, CheckCircle, Clock, ExternalLink, Download, FileSpreadsheet } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
-import { eprCreditData, portalIntegrations, eprTrendData } from '@/data/dashboardData';
+import { eprCreditData, portalIntegrations, eprTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
+import { exportToCSV, exportToExcel, prepareEPRDataForExport } from '@/utils/exportUtils';
 
 interface RVSFTabProps {
   isLoading: boolean;
+  filters: FilterState;
 }
 
-const RVSFTab = ({ isLoading }: RVSFTabProps) => {
+const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
   const [displayCredits, setDisplayCredits] = useState(0);
-  const totalCredits = eprCreditData.reduce((sum, item) => sum + item.creditsGenerated, 0);
+  const financialYear = getFinancialYear(filters.dateFrom);
+  
+  // Filter EPR data based on selected materials
+  const filteredEPRData = filters.materials.length > 0 
+    ? eprCreditData.filter(m => filters.materials.includes(m.material))
+    : eprCreditData;
+    
+  const totalCredits = filteredEPRData.reduce((sum, item) => sum + item.creditsGenerated, 0);
 
   // Animate the counter
   useEffect(() => {
@@ -35,7 +44,7 @@ const RVSFTab = ({ isLoading }: RVSFTabProps) => {
     return () => clearInterval(timer);
   }, [isLoading, totalCredits]);
 
-  // EPR Credits Table Columns
+  // EPR Credits Table Columns with additional columns
   const eprColumns = [
     {
       title: 'Material',
@@ -44,7 +53,7 @@ const RVSFTab = ({ isLoading }: RVSFTabProps) => {
       render: (text: string) => <span className="font-semibold">{text}</span>,
     },
     {
-      title: 'EPR Credits Generated (MT)',
+      title: 'EPR Credits Generated',
       dataIndex: 'creditsGenerated',
       key: 'creditsGenerated',
       render: (value: number) => (
@@ -52,10 +61,15 @@ const RVSFTab = ({ isLoading }: RVSFTabProps) => {
       ),
     },
     {
-      title: 'Dispatch Volume (MT)',
+      title: 'Dispatch Volume',
       dataIndex: 'dispatchVolume',
       key: 'dispatchVolume',
       render: (value: number) => value.toLocaleString(),
+    },
+    {
+      title: 'Unit',
+      dataIndex: 'unit',
+      key: 'unit',
     },
     {
       title: 'Credit Ratio',
@@ -69,6 +83,29 @@ const RVSFTab = ({ isLoading }: RVSFTabProps) => {
           </Tag>
         );
       },
+    },
+    {
+      title: 'Target Market',
+      dataIndex: 'targetMarket',
+      key: 'targetMarket',
+    },
+    {
+      title: 'Financial Year',
+      dataIndex: 'financialYear',
+      key: 'financialYear',
+    },
+    {
+      title: 'Plant',
+      dataIndex: 'plant',
+      key: 'plant',
+    },
+    {
+      title: 'Sourced from ELV',
+      dataIndex: 'sourcedFromELV',
+      key: 'sourcedFromELV',
+      render: (value: string) => (
+        <Tag color={value === 'Yes' ? 'green' : 'default'}>{value}</Tag>
+      ),
     },
   ];
 
@@ -110,11 +147,33 @@ const RVSFTab = ({ isLoading }: RVSFTabProps) => {
   ];
 
   // Chart data for EPR by material
-  const barChartData = eprCreditData.map(item => ({
+  const barChartData = filteredEPRData.map(item => ({
     name: item.material,
     'Credits Generated': item.creditsGenerated,
     'Dispatch Volume': item.dispatchVolume,
   }));
+
+  // Export handlers
+  const handleExportCSV = () => {
+    const data = prepareEPRDataForExport(filteredEPRData);
+    exportToCSV(data, 'RVSF_EPR_Credits', filters);
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel(
+      [
+        { name: 'EPR Credits by Material', data: prepareEPRDataForExport(filteredEPRData) },
+        { name: 'Portal Integrations', data: portalIntegrations.map(p => ({
+          'Portal Name': p.portalName,
+          'Status': p.status,
+          'Last Sync': p.lastSync,
+          'URL': p.url,
+        })) },
+      ],
+      'RVSF_Scrapping_EPR',
+      filters
+    );
+  };
 
   if (isLoading) {
     return (
@@ -126,10 +185,30 @@ const RVSFTab = ({ isLoading }: RVSFTabProps) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Section Title */}
-      <div>
-        <h2 className="text-xl font-semibold text-foreground mb-1">RVSF - Scrapping & EPR</h2>
-        <p className="text-sm text-muted-foreground">End-of-life vehicle processing and EPR credit generation</p>
+      {/* Section Title with Export Buttons */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground mb-1">RVSFs Overview - Scrapping & EPR</h2>
+          <p className="text-sm text-muted-foreground">
+            End-of-life vehicle processing and EPR credit generation • FY {financialYear}
+          </p>
+        </div>
+        <Space>
+          <Button 
+            icon={<Download className="w-4 h-4" />} 
+            onClick={handleExportCSV}
+          >
+            Export CSV
+          </Button>
+          <Button 
+            type="primary"
+            icon={<FileSpreadsheet className="w-4 h-4" />} 
+            onClick={handleExportExcel}
+            className="bg-[#4b6043] hover:bg-[#5a7350]"
+          >
+            Export XLSX
+          </Button>
+        </Space>
       </div>
 
       {/* Main EPR Credit Generator Widget */}
@@ -173,43 +252,47 @@ const RVSFTab = ({ isLoading }: RVSFTabProps) => {
       <div className="bg-card rounded-xl p-6 shadow-card">
         <h3 className="text-lg font-semibold mb-4">EPR Credits by Material Type</h3>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Bar Chart */}
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="Dispatch Volume" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Credits Generated" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Table */}
-          <div>
-            <Table
-              columns={eprColumns}
-              dataSource={eprCreditData.map((item, i) => ({ ...item, key: i }))}
-              pagination={false}
-              size="middle"
-            />
-          </div>
+        {/* Bar Chart */}
+        <div className="h-[300px] mb-6">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                interval={0}
+              />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: 10 }} />
+              <Bar dataKey="Dispatch Volume" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Credits Generated" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
+
+        {/* Table */}
+        <Table
+          columns={eprColumns}
+          dataSource={filteredEPRData.map((item, i) => ({ ...item, key: i }))}
+          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} materials` }}
+          size="middle"
+          scroll={{ x: 1200 }}
+        />
       </div>
 
       {/* EPR Credit Trend */}
       <div className="bg-card rounded-xl p-6 shadow-card">
-        <h3 className="text-lg font-semibold mb-4">EPR Credit Generation Trend (FY 2025-26)</h3>
+        <h3 className="text-lg font-semibold mb-4">EPR Credit Generation Trend (FY {financialYear})</h3>
         <div className="h-[250px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={eprTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>

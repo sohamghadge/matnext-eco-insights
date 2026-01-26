@@ -13,7 +13,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('msil');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
+  const handleFilterChange = useCallback((key: keyof FilterState, value: string | string[] | Date) => {
     setIsLoading(true);
     setFilters(prev => ({ ...prev, [key]: value }));
     
@@ -32,37 +32,37 @@ const Dashboard = () => {
           Corporate (MSIL)
         </span>
       ),
-      children: <MSILTab isLoading={isLoading} />,
+      children: <MSILTab isLoading={isLoading} filters={filters} />,
     },
     {
       key: 'rvsf',
       label: (
         <span className="flex items-center gap-2">
           <Recycle className="w-4 h-4" />
-          Scrapping (RVSF)
+          RVSFs Overview
         </span>
       ),
-      children: <RVSFTab isLoading={isLoading} />,
+      children: <RVSFTab isLoading={isLoading} filters={filters} />,
     },
     {
       key: 'recyclers',
       label: (
         <span className="flex items-center gap-2">
           <Factory className="w-4 h-4" />
-          Material Processing
+          Recyclers Overview
         </span>
       ),
-      children: <RecyclersTab isLoading={isLoading} />,
+      children: <RecyclersTab isLoading={isLoading} filters={filters} />,
     },
     {
       key: 'suppliers',
       label: (
         <span className="flex items-center gap-2">
           <Truck className="w-4 h-4" />
-          Supply Chain
+          Suppliers Overview
         </span>
       ),
-      children: <SuppliersTab isLoading={isLoading} />,
+      children: <SuppliersTab isLoading={isLoading} filters={filters} />,
     },
   ];
 

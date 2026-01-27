@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Tabs, Empty, ConfigProvider } from 'antd';
+import { Tabs, ConfigProvider } from 'antd';
 import { Building2, Recycle, Factory, Truck } from 'lucide-react';
 import DashboardHeader from './DashboardHeader';
 import MSILTab from './tabs/MSILTab';
@@ -66,12 +66,12 @@ const Dashboard = () => {
     },
   ];
 
-  // Ant Design theme customization
+  // Ant Design theme customization - Olive Green theme
   const antdTheme = {
     token: {
-      colorPrimary: '#3d6b4f',
-      colorSuccess: '#10b981',
-      colorWarning: '#f59e0b',
+      colorPrimary: '#5a7a32',
+      colorSuccess: '#6b8e23',
+      colorWarning: '#d4a537',
       colorError: '#ef4444',
       borderRadius: 8,
       fontFamily: "'Inter', system-ui, sans-serif",
@@ -83,32 +83,27 @@ const Dashboard = () => {
       },
       Tabs: {
         itemColor: '#64748b',
-        itemActiveColor: '#3d6b4f',
-        itemHoverColor: '#3d6b4f',
-        inkBarColor: '#3d6b4f',
+        itemActiveColor: '#5a7a32',
+        itemHoverColor: '#5a7a32',
+        inkBarColor: '#5a7a32',
       },
       Table: {
-        headerBg: '#f0fdf4',
-        headerColor: '#166534',
-        borderColor: '#e2e8f0',
+        headerBg: '#f0f4e8',
+        headerColor: '#3d5a1f',
+        borderColor: '#e2e8d0',
       },
       Progress: {
-        defaultColor: '#10b981',
+        defaultColor: '#6b8e23',
       },
     },
   };
 
   return (
     <ConfigProvider theme={antdTheme}>
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DashboardHeader filters={filters} onFilterChange={handleFilterChange} />
 
-        <main className="max-w-7xl mx-auto px-6 py-8">
-          {/* Page Title */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">Dashboard (Statistics)</h1>
-          </div>
-
+        <div className="px-6 py-6">
           {/* Tabs */}
           <Tabs
             activeKey={activeTab}
@@ -118,7 +113,7 @@ const Dashboard = () => {
             size="large"
             className="dashboard-tabs"
           />
-        </main>
+        </div>
       </div>
     </ConfigProvider>
   );

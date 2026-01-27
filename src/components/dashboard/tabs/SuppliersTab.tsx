@@ -3,6 +3,7 @@ import { Star, Package, Download, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { componentData, supplierSummary, componentTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
 import { exportToCSV, exportToExcel, prepareComponentDataForExport } from '@/utils/exportUtils';
+import { getProgressColor, getEcoScoreTag } from '../KPICard';
 
 interface SuppliersTabProps {
   isLoading: boolean;
@@ -11,18 +12,6 @@ interface SuppliersTabProps {
 
 const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
   const financialYear = getFinancialYear(filters.dateFrom);
-  
-  const getEcoScoreColor = (score: number) => {
-    if (score >= 5) return 'success';
-    if (score >= 4) return 'warning';
-    return 'error';
-  };
-
-  const getEcoScoreLabel = (score: number) => {
-    if (score >= 5) return 'Excellent';
-    if (score >= 4) return 'Good';
-    return 'Needs Improvement';
-  };
 
   const columns = [
     {
@@ -65,15 +54,16 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
       key: 'recycledPercent',
       render: (value: number, record: typeof componentData[0]) => {
         const percent = (value / record.totalWeight) * 100;
+        const progressColor = getProgressColor(percent);
         return (
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-sm">{percent.toFixed(1)}%</span>
+              <span className="text-sm font-medium" style={{ color: progressColor }}>{percent.toFixed(1)}%</span>
             </div>
             <Progress
               percent={percent}
               size="small"
-              strokeColor="hsl(var(--accent))"
+              strokeColor={progressColor}
               trailColor="hsl(var(--muted))"
               showInfo={false}
             />
@@ -85,19 +75,42 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
       title: 'Eco-Score',
       dataIndex: 'ecoScore',
       key: 'ecoScore',
-      render: (score: number) => (
-        <div className="flex items-center gap-2">
-          <Tag color={getEcoScoreColor(score)} className="m-0">
-            <div className="flex items-center gap-1">
-              <Star className="w-3 h-3" />
-              <span>{score.toFixed(1)}</span>
-            </div>
-          </Tag>
-          <span className="text-xs text-muted-foreground">
-            {getEcoScoreLabel(score)}
-          </span>
-        </div>
-      ),
+      render: (score: number) => {
+        const { color, text } = getEcoScoreTag(score);
+        return (
+          <div className="flex items-center gap-2">
+            <Tag color={color} className="m-0">
+              <div className="flex items-center gap-1">
+                <Star className="w-3 h-3" fill="currentColor" />
+                <span>{score.toFixed(1)}</span>
+              </div>
+            </Tag>
+            <span className="text-xs text-muted-foreground">
+              {text}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Rating',
+      key: 'rating',
+      render: (_: unknown, record: { ecoScore: number }) => {
+        const stars = record.ecoScore >= 5 ? 5 : record.ecoScore >= 4 ? 4 : record.ecoScore >= 3 ? 3 : record.ecoScore >= 2 ? 2 : 1;
+        const color = stars >= 4 ? '#16a34a' : stars >= 3 ? '#eab308' : '#dc2626';
+        return (
+          <div className="flex items-center gap-0.5">
+            {[...Array(5)].map((_, i) => (
+              <Star 
+                key={i} 
+                className="w-3.5 h-3.5" 
+                fill={i < stars ? color : 'transparent'} 
+                stroke={i < stars ? color : '#d1d5db'}
+              />
+            ))}
+          </div>
+        );
+      },
     },
     {
       title: 'Target Market',

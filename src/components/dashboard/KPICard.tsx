@@ -22,11 +22,30 @@ const variantClasses: Record<CardVariant, string> = {
   pink: 'kpi-card-pink',
 };
 
-const progressColors: Record<CardVariant, string> = {
-  green: '#166534',
-  blue: '#1e40af',
-  gold: '#92400e',
-  pink: '#be123c',
+// Get color based on percentage thresholds (Red/Yellow/Green)
+export const getProgressColor = (percentage: number): string => {
+  if (percentage >= 75) return '#16a34a'; // Green - good
+  if (percentage >= 50) return '#eab308'; // Yellow - warning
+  return '#dc2626'; // Red - danger
+};
+
+export const getStatusClass = (percentage: number): string => {
+  if (percentage >= 75) return 'status-success';
+  if (percentage >= 50) return 'status-warning';
+  return 'status-danger';
+};
+
+export const getEcoScoreColor = (score: number): string => {
+  if (score >= 5) return '#16a34a'; // Green - good
+  if (score >= 3.5) return '#eab308'; // Yellow - warning
+  return '#dc2626'; // Red - danger
+};
+
+export const getEcoScoreTag = (score: number): { color: string; text: string } => {
+  if (score >= 5) return { color: 'green', text: 'Excellent' };
+  if (score >= 4) return { color: 'gold', text: 'Good' };
+  if (score >= 3) return { color: 'orange', text: 'Average' };
+  return { color: 'red', text: 'Poor' };
 };
 
 const KPICard = ({
@@ -41,6 +60,7 @@ const KPICard = ({
   previousValue,
 }: KPICardProps) => {
   const percentage = target ? Math.round((Number(value) / target) * 100) : 0;
+  const progressColor = getProgressColor(percentage);
 
   if (isLoading) {
     return (
@@ -69,10 +89,10 @@ const KPICard = ({
                 type="dashboard"
                 percent={percentage}
                 size={80}
-                strokeColor={progressColors[variant]}
+                strokeColor={progressColor}
                 strokeWidth={8}
                 format={() => (
-                  <span className="text-lg font-bold">{percentage}%</span>
+                  <span className="text-lg font-bold" style={{ color: progressColor }}>{percentage}%</span>
                 )}
                 className="progress-glow"
               />
@@ -93,9 +113,12 @@ const KPICard = ({
                 <span className="text-base font-normal ml-1">{unit}</span>
               </p>
               
-              {/* Trend indicator */}
+              {/* Trend indicator with color coding */}
               {trend && (
-                <div className={`flex items-center gap-1 mt-2 text-sm ${trend.isPositive ? 'text-emerald-700' : 'text-rose-700'}`}>
+                <div 
+                  className="flex items-center gap-1 mt-2 text-sm font-medium"
+                  style={{ color: trend.isPositive ? '#16a34a' : '#dc2626' }}
+                >
                   {trend.isPositive ? (
                     <TrendingUp className="w-4 h-4" />
                   ) : (

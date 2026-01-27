@@ -1,7 +1,7 @@
-import { Table, Tag, Skeleton, Divider, Button, Space } from 'antd';
-import { CheckCircle, Download, FileSpreadsheet } from 'lucide-react';
+import { Table, Tag, Skeleton, Divider, Button, Space, Progress } from 'antd';
+import { CheckCircle, Download, FileSpreadsheet, Star } from 'lucide-react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart } from 'recharts';
-import KPICard from '../KPICard';
+import KPICard, { getProgressColor } from '../KPICard';
 import { materialTargets, modelRecycledContent, partRecycledContent, materialTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
 import { exportToCSV, exportToExcel, prepareMaterialDataForExport, prepareModelDataForExport, preparePartDataForExport } from '@/utils/exportUtils';
 
@@ -43,11 +43,50 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
       title: 'Achievement %',
       dataIndex: 'percentage',
       key: 'percentage',
-      render: (value: number) => (
-        <Tag color={value >= 10 ? 'success' : value >= 5 ? 'warning' : 'error'}>
-          {value.toFixed(2)}%
-        </Tag>
-      ),
+      render: (value: number) => {
+        const color = value >= 10 ? 'green' : value >= 5 ? 'gold' : 'red';
+        return (
+          <Tag color={color} className="font-semibold">
+            {value.toFixed(2)}%
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'Progress',
+      key: 'progress',
+      render: (_: unknown, record: { percentage: number }) => {
+        const normalizedPercent = Math.min(record.percentage * 10, 100);
+        const progressColor = getProgressColor(normalizedPercent);
+        return (
+          <Progress 
+            percent={normalizedPercent} 
+            size="small" 
+            strokeColor={progressColor}
+            format={() => `${record.percentage.toFixed(1)}%`}
+          />
+        );
+      },
+    },
+    {
+      title: 'Rating',
+      key: 'rating',
+      render: (_: unknown, record: { percentage: number }) => {
+        const stars = record.percentage >= 10 ? 5 : record.percentage >= 7.5 ? 4 : record.percentage >= 5 ? 3 : record.percentage >= 2.5 ? 2 : 1;
+        const color = stars >= 4 ? '#16a34a' : stars >= 3 ? '#eab308' : '#dc2626';
+        return (
+          <div className="flex items-center gap-0.5">
+            {[...Array(5)].map((_, i) => (
+              <Star 
+                key={i} 
+                className="w-3.5 h-3.5" 
+                fill={i < stars ? color : 'transparent'} 
+                stroke={i < stars ? color : '#d1d5db'}
+              />
+            ))}
+          </div>
+        );
+      },
     },
     {
       title: 'Target Market',

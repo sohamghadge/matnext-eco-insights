@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Badge, Skeleton, Statistic, Table, Tag, Divider, Button, Space } from 'antd';
-import { Link2, Shield, RefreshCw, Zap, CheckCircle, Clock, ExternalLink, Download, FileSpreadsheet } from 'lucide-react';
+import { Badge, Skeleton, Table, Tag, Divider, Button, Space, Progress } from 'antd';
+import { Link2, Shield, RefreshCw, Zap, CheckCircle, Clock, ExternalLink, Download, FileSpreadsheet, Star } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { eprCreditData, portalIntegrations, eprTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
 import { exportToCSV, exportToExcel, prepareEPRDataForExport } from '@/utils/exportUtils';
+import { getProgressColor } from '../KPICard';
 
 interface RVSFTabProps {
   isLoading: boolean;
@@ -77,10 +78,42 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
       key: 'ratio',
       render: (credits: number, record: typeof eprCreditData[0]) => {
         const ratio = (credits / record.dispatchVolume) * 100;
+        const color = ratio >= 90 ? 'green' : ratio >= 80 ? 'gold' : 'red';
+        const progressColor = getProgressColor(ratio);
         return (
-          <Tag color={ratio >= 90 ? 'success' : ratio >= 80 ? 'warning' : 'error'}>
-            {ratio.toFixed(1)}%
-          </Tag>
+          <div className="flex items-center gap-2">
+            <Progress 
+              percent={ratio} 
+              size="small" 
+              strokeColor={progressColor}
+              format={() => null}
+              style={{ width: 60 }}
+            />
+            <Tag color={color}>
+              {ratio.toFixed(1)}%
+            </Tag>
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Rating',
+      key: 'rating',
+      render: (_: unknown, record: typeof eprCreditData[0]) => {
+        const ratio = (record.creditsGenerated / record.dispatchVolume) * 100;
+        const stars = ratio >= 95 ? 5 : ratio >= 90 ? 4 : ratio >= 85 ? 3 : ratio >= 80 ? 2 : 1;
+        const color = stars >= 4 ? '#16a34a' : stars >= 3 ? '#eab308' : '#dc2626';
+        return (
+          <div className="flex items-center gap-0.5">
+            {[...Array(5)].map((_, i) => (
+              <Star 
+                key={i} 
+                className="w-3.5 h-3.5" 
+                fill={i < stars ? color : 'transparent'} 
+                stroke={i < stars ? color : '#d1d5db'}
+              />
+            ))}
+          </div>
         );
       },
     },

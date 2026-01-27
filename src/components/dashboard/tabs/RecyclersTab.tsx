@@ -1,8 +1,9 @@
 import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space } from 'antd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet } from 'lucide-react';
+import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet, Star } from 'lucide-react';
 import { plasticBreakdown, recyclerStats, recyclerSummary, recyclerTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
 import { exportToCSV, exportToExcel, prepareRecyclerDataForExport } from '@/utils/exportUtils';
+import { getProgressColor } from '../KPICard';
 
 interface RecyclersTabProps {
   isLoading: boolean;
@@ -290,22 +291,39 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
               </div>
             </div>
 
-            {/* Efficiency Bar */}
+            {/* Efficiency Bar with color coding */}
             <div className="w-full max-w-md p-4 bg-secondary/30 rounded-xl">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Recycling Efficiency</span>
-                <span className="text-lg font-bold text-accent">{recycleRatio}%</span>
+                <span 
+                  className="text-lg font-bold"
+                  style={{ color: getProgressColor(recycleRatio) }}
+                >
+                  {recycleRatio}%
+                </span>
               </div>
               <Progress
                 percent={recycleRatio}
-                strokeColor={{
-                  '0%': '#10b981',
-                  '100%': '#059669',
-                }}
+                strokeColor={getProgressColor(recycleRatio)}
                 trailColor="hsl(var(--muted))"
                 showInfo={false}
                 strokeWidth={12}
               />
+              {/* Star rating */}
+              <div className="flex items-center justify-center gap-1 mt-3">
+                {[...Array(5)].map((_, i) => {
+                  const stars = recycleRatio >= 80 ? 5 : recycleRatio >= 60 ? 4 : recycleRatio >= 40 ? 3 : recycleRatio >= 20 ? 2 : 1;
+                  const color = stars >= 4 ? '#16a34a' : stars >= 3 ? '#eab308' : '#dc2626';
+                  return (
+                    <Star 
+                      key={i} 
+                      className="w-4 h-4" 
+                      fill={i < stars ? color : 'transparent'} 
+                      stroke={i < stars ? color : '#d1d5db'}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </div>
 

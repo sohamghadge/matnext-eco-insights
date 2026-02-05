@@ -1,212 +1,57 @@
-import { useEffect, useState } from 'react';
-import { Badge, Skeleton, Table, Tag, Divider, Button, Space, Progress } from 'antd';
-import { Link2, Shield, RefreshCw, Zap, CheckCircle, Clock, ExternalLink, Download, FileSpreadsheet, Star } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
-import { eprCreditData, portalIntegrations, eprTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
-import { exportToCSV, exportToExcel, prepareEPRDataForExport } from '@/utils/exportUtils';
-import { getProgressColor } from '../KPICard';
+import { useState } from 'react';
+import { DatePicker, Select, Button, Table, Tag, Skeleton, Divider } from 'antd';
+import { RefreshCw, ExternalLink, MapPin, Lightbulb, Link2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import dayjs from 'dayjs';
+import IndiaMap from '../IndiaMap';
+import {
+  FilterState,
+  rvsfFilterOptions,
+  rvsfSummaryStats,
+  scrapDispatchDetails,
+  msilComponentsDispatchDetails,
+  monthwiseCDData,
+  msilTestVehiclesData,
+  fixedTargets,
+  rvsfAIInsights,
+  steelEPRCreditsStatus,
+} from '@/data/dashboardData';
 
 interface RVSFTabProps {
   isLoading: boolean;
   filters: FilterState;
 }
 
-const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
-  const [displayCredits, setDisplayCredits] = useState(0);
-  const financialYear = getFinancialYear(filters.dateFrom);
-  
-  // Filter EPR data based on selected materials
-  const filteredEPRData = filters.materials.length > 0 
-    ? eprCreditData.filter(m => filters.materials.includes(m.material))
-    : eprCreditData;
-    
-  const totalCredits = filteredEPRData.reduce((sum, item) => sum + item.creditsGenerated, 0);
+const RVSFTab = ({ isLoading, filters: _filters }: RVSFTabProps) => {
+  const [dateFrom, setDateFrom] = useState(dayjs('2025-01-01'));
+  const [dateTo, setDateTo] = useState(dayjs('2025-12-31'));
+  const [elvMake, setElvMake] = useState('Maruti Suzuki');
+  const [makeYear, setMakeYear] = useState('2005-06');
+  const [source, setSource] = useState('Collection Center');
 
-  // Animate the counter
-  useEffect(() => {
-    if (isLoading) return;
-
-    const target = totalCredits;
-    const duration = 2000;
-    const steps = 60;
-    const increment = target / steps;
-    let current = 0;
-
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= target) {
-        setDisplayCredits(target);
-        clearInterval(timer);
-      } else {
-        setDisplayCredits(current);
-      }
-    }, duration / steps);
-
-    return () => clearInterval(timer);
-  }, [isLoading, totalCredits]);
-
-  // EPR Credits Table Columns with additional columns
-  const eprColumns = [
+  // Fixed Targets Table Columns
+  const targetColumns = [
     {
-      title: 'Material',
-      dataIndex: 'material',
-      key: 'material',
+      title: 'Target Year',
+      dataIndex: 'targetYear',
+      key: 'targetYear',
       render: (text: string) => <span className="font-semibold">{text}</span>,
     },
     {
-      title: 'EPR Credits Generated',
-      dataIndex: 'creditsGenerated',
-      key: 'creditsGenerated',
-      render: (value: number) => (
-        <span className="text-accent font-semibold">{value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-      ),
+      title: 'Target Vehicles Scrapped',
+      dataIndex: 'targetVehiclesScrapped',
+      key: 'targetVehiclesScrapped',
+      render: (value: number) => <span className="font-semibold text-primary">{value.toLocaleString('en-IN')}</span>,
     },
     {
-      title: 'Dispatch Volume',
-      dataIndex: 'dispatchVolume',
-      key: 'dispatchVolume',
-      render: (value: number) => value.toLocaleString(),
-    },
-    {
-      title: 'Unit',
-      dataIndex: 'unit',
-      key: 'unit',
-    },
-    {
-      title: 'Credit Ratio',
-      dataIndex: 'creditsGenerated',
-      key: 'ratio',
-      render: (credits: number, record: typeof eprCreditData[0]) => {
-        const ratio = (credits / record.dispatchVolume) * 100;
-        const color = ratio >= 90 ? 'green' : ratio >= 80 ? 'gold' : 'red';
-        const progressColor = getProgressColor(ratio);
-        return (
-          <div className="flex items-center gap-2">
-            <Progress 
-              percent={ratio} 
-              size="small" 
-              strokeColor={progressColor}
-              format={() => null}
-              style={{ width: 60 }}
-            />
-            <Tag color={color}>
-              {ratio.toFixed(1)}%
-            </Tag>
-          </div>
-        );
-      },
-    },
-    {
-      title: 'Rating',
-      key: 'rating',
-      render: (_: unknown, record: typeof eprCreditData[0]) => {
-        const ratio = (record.creditsGenerated / record.dispatchVolume) * 100;
-        const stars = ratio >= 95 ? 5 : ratio >= 90 ? 4 : ratio >= 85 ? 3 : ratio >= 80 ? 2 : 1;
-        const color = stars >= 4 ? '#16a34a' : stars >= 3 ? '#eab308' : '#dc2626';
-        return (
-          <div className="flex items-center gap-0.5">
-            {[...Array(5)].map((_, i) => (
-              <Star 
-                key={i} 
-                className="w-3.5 h-3.5" 
-                fill={i < stars ? color : 'transparent'} 
-                stroke={i < stars ? color : '#d1d5db'}
-              />
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      title: 'Target Market',
-      dataIndex: 'targetMarket',
-      key: 'targetMarket',
-    },
-    {
-      title: 'Financial Year',
-      dataIndex: 'financialYear',
-      key: 'financialYear',
-    },
-    {
-      title: 'Plant',
-      dataIndex: 'plant',
-      key: 'plant',
-    },
-    {
-      title: 'Sourced from ELV',
-      dataIndex: 'sourcedFromELV',
-      key: 'sourcedFromELV',
-      render: (value: string) => (
-        <Tag color={value === 'Yes' ? 'green' : 'default'}>{value}</Tag>
-      ),
+      title: 'Target Weight Scrapped',
+      dataIndex: 'targetWeightScrapped',
+      key: 'targetWeightScrapped',
+      render: (text: string) => <span className="font-semibold text-accent">{text}</span>,
     },
   ];
 
-  // Portal Integration Columns
-  const portalColumns = [
-    {
-      title: 'Portal Name',
-      dataIndex: 'portalName',
-      key: 'portalName',
-      render: (text: string) => <span className="font-medium">{text}</span>,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'linked' ? 'success' : status === 'pending' ? 'warning' : 'error'} className="flex items-center gap-1 w-fit">
-          {status === 'linked' ? <CheckCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-          {status.charAt(0).toUpperCase() + status.slice(1)}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Last Sync',
-      dataIndex: 'lastSync',
-      key: 'lastSync',
-      render: (date: string) => new Date(date).toLocaleString(),
-    },
-    {
-      title: 'Action',
-      dataIndex: 'url',
-      key: 'action',
-      render: (url: string) => (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
-          View Portal <ExternalLink className="w-3 h-3" />
-        </a>
-      ),
-    },
-  ];
 
-  // Chart data for EPR by material
-  const barChartData = filteredEPRData.map(item => ({
-    name: item.material,
-    'Credits Generated': item.creditsGenerated,
-    'Dispatch Volume': item.dispatchVolume,
-  }));
-
-  // Export handlers
-  const handleExportCSV = () => {
-    const data = prepareEPRDataForExport(filteredEPRData);
-    exportToCSV(data, 'RVSF_EPR_Credits', filters);
-  };
-
-  const handleExportExcel = () => {
-    exportToExcel(
-      [
-        { name: 'EPR Credits by Material', data: prepareEPRDataForExport(filteredEPRData) },
-        { name: 'Portal Integrations', data: portalIntegrations.map(p => ({
-          'Portal Name': p.portalName,
-          'Status': p.status,
-          'Last Sync': p.lastSync,
-          'URL': p.url,
-        })) },
-      ],
-      'RVSF_Scrapping_EPR',
-      filters
-    );
-  };
 
   if (isLoading) {
     return (
@@ -217,165 +62,312 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Section Title with Export Buttons */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground mb-1">RVSFs Overview - Scrapping & EPR</h2>
-          <p className="text-sm text-muted-foreground">
-            End-of-life vehicle processing and EPR credit generation • FY {financialYear}
-          </p>
-        </div>
-        <Space>
-          <Button 
-            icon={<Download className="w-4 h-4" />} 
-            onClick={handleExportCSV}
-          >
-            Export CSV
-          </Button>
-          <Button 
+    <div className="space-y-6 animate-fade-in">
+      {/* Top Filter Bar */}
+      <div className="bg-card rounded-xl p-4 shadow-card border border-border">
+        <div className="flex flex-wrap items-end gap-4">
+          {/* From Date */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">From</label>
+            <DatePicker
+              value={dateFrom}
+              onChange={(date) => date && setDateFrom(date)}
+              format="DD-MMM-YYYY"
+              style={{ width: 130 }}
+            />
+          </div>
+
+          {/* To Date */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Upto</label>
+            <DatePicker
+              value={dateTo}
+              onChange={(date) => date && setDateTo(date)}
+              format="DD-MMM-YYYY"
+              style={{ width: 130 }}
+            />
+          </div>
+
+          {/* ELV Make */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">ELV Make</label>
+            <Select
+              value={elvMake}
+              onChange={setElvMake}
+              style={{ width: 140 }}
+              options={rvsfFilterOptions.elvMakes.map(m => ({ value: m, label: m }))}
+            />
+          </div>
+
+          {/* Make Year */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Make Year</label>
+            <Select
+              value={makeYear}
+              onChange={setMakeYear}
+              style={{ width: 100 }}
+              options={rvsfFilterOptions.makeYears.map(y => ({ value: y, label: y }))}
+            />
+          </div>
+
+          {/* Source Filter */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Source</label>
+            <Select
+              value={source}
+              onChange={setSource}
+              style={{ width: 150 }}
+              options={rvsfFilterOptions.sources.map(s => ({ value: s, label: s }))}
+            />
+          </div>
+
+          <Button icon={<RefreshCw className="w-4 h-4" />}>Refresh</Button>
+
+          <Button
             type="primary"
-            icon={<FileSpreadsheet className="w-4 h-4" />} 
-            onClick={handleExportExcel}
             className="bg-[#4b6043] hover:bg-[#5a7350]"
+            icon={<ExternalLink className="w-4 h-4" />}
+            onClick={() => window.open('https://vscrap.parivahan.gov.in/vehiclescrap/vahan/welcome.xhtml', '_blank')}
           >
-            Export XLSX
+            ESG Reporting
           </Button>
-        </Space>
+        </div>
       </div>
 
-      {/* Main EPR Credit Generator Widget */}
-      <div className="bg-gradient-to-br from-primary/10 via-accent/5 to-secondary rounded-2xl p-8 shadow-card border border-primary/20">
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-accent/20 rounded-xl flex items-center justify-center">
-              <Zap className="w-6 h-6 text-accent" />
+      {/* Summary Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Left Card - Vehicle Stats */}
+        <div className="bg-emerald-50 border-2 border-emerald-600 rounded-xl p-4">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-800">No. of Vehicles Scrapped =</span>
+              <span className="font-bold text-emerald-700">{rvsfSummaryStats.vehiclesScrapped.toLocaleString()}</span>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">EPR Credit Generator</h3>
-              <p className="text-sm text-muted-foreground">Real-time credit accumulation</p>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-800">Inventory (MT/kg/Nos.) =</span>
+              <span className="font-bold text-emerald-700">{rvsfSummaryStats.inventory.value.toLocaleString()} {rvsfSummaryStats.inventory.unit}</span>
             </div>
-          </div>
-          <Badge status="processing" text="Live" className="animate-pulse" />
-        </div>
-
-        <div className="text-center py-6">
-          <p className="text-sm uppercase tracking-wider text-muted-foreground mb-2">
-            Total EPR Credits Generated
-          </p>
-          <div className="flex items-baseline justify-center gap-2">
-            <span className="text-6xl font-bold text-primary tabular-nums animate-counter">
-              {displayCredits.toLocaleString('en-IN', { 
-                minimumFractionDigits: 2, 
-                maximumFractionDigits: 2 
-              })}
-            </span>
-            <span className="text-2xl font-medium text-muted-foreground">MT</span>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-800">No. of COD generated =</span>
+              <span className="font-bold text-emerald-700">{rvsfSummaryStats.codGenerated.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-800">No. of MSIL Test Vehicles Scrapped =</span>
+              <span className="font-bold text-emerald-700">{rvsfSummaryStats.msilTestVehiclesScrapped.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-800">No. of collection centres (tab - state wise)</span>
+              <span className="font-bold text-emerald-700">{rvsfSummaryStats.collectionCentres}</span>
+            </div>
           </div>
         </div>
 
-        {/* Connection indicator */}
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" style={{ animationDuration: '3s' }} />
-          <span className="text-muted-foreground">Syncing with RVSF dispatch volume</span>
+        {/* Center Card - Scrap Dispatch Details */}
+        <div className="bg-blue-50 border-2 border-blue-600 rounded-xl p-4">
+          <h4 className="font-semibold text-blue-800 underline mb-3">Scrap Dispatch Details:</h4>
+          <div className="space-y-2">
+            {scrapDispatchDetails.map((item) => (
+              <div key={item.material} className="flex justify-between items-center">
+                <span className="text-sm text-blue-800">{item.material} ({item.unit}) =</span>
+                <span className="font-bold text-blue-700">{item.value.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Card - MSIL Components Dispatch Details */}
+        <div className="bg-amber-50 border-2 border-amber-600 rounded-xl p-4">
+          <h4 className="font-semibold text-amber-800 underline mb-3">MSIL Components Dispatch Details:</h4>
+          <div className="space-y-2">
+            {msilComponentsDispatchDetails.map((item) => (
+              <div key={item.material} className="flex justify-between items-center">
+                <span className="text-sm text-amber-800">{item.material} ({item.unit}) =</span>
+                <span className="font-bold text-amber-700">{item.value.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* EPR Credits by Material - Chart + Table */}
-      <div className="bg-card rounded-xl p-6 shadow-card">
-        <h3 className="text-lg font-semibold mb-4">EPR Credits by Material Type</h3>
-        
-        {/* Bar Chart */}
-        <div className="h-[300px] mb-6">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                angle={-45}
-                textAnchor="end"
-                height={60}
-                interval={0}
-              />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-              />
-              <Legend wrapperStyle={{ paddingTop: 10 }} />
-              <Bar dataKey="Dispatch Volume" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Credits Generated" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthwise CD Generated Chart */}
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-primary underline">Monthwise CD Generated</h3>
+            <Tag color="default">undefined</Tag>
+          </div>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthwiseCDData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                />
+                <YAxis
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                  domain={[0, 900]}
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value: number) => [`${value}`, 'CD Generated']}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {monthwiseCDData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <a
+            href="https://vscrap.parivahan.gov.in/vehiclescrap/vahan/welcome.xhtml"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-2"
+          >
+            <ExternalLink className="w-3 h-3" />
+            https://vscrap.parivahan.gov.in/vehiclescrap/vahan/welcome.xhtml
+          </a>
         </div>
 
-        {/* Table */}
-        <Table
-          columns={eprColumns}
-          dataSource={filteredEPRData.map((item, i) => ({ ...item, key: i }))}
-          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} materials` }}
-          size="middle"
-          scroll={{ x: 1200 }}
-        />
+        {/* MSIL Test Vehicles Scrapped Chart */}
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-primary underline">MSIL Test Vehicles Scrapped</h3>
+            <Tag color="default">undefined</Tag>
+          </div>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={msilTestVehiclesData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                />
+                <YAxis
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                  domain={[0, 900]}
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value: number) => [`${value}`, 'Vehicles Scrapped']}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {msilTestVehiclesData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      {/* EPR Credit Trend */}
-      <div className="bg-card rounded-xl p-6 shadow-card">
-        <h3 className="text-lg font-semibold mb-4">EPR Credit Generation Trend (FY {financialYear})</h3>
-        <div className="h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={eprTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-                formatter={(value: number) => [`${value.toLocaleString()} MT`, 'Credits']}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="credits" 
-                stroke="hsl(var(--accent))" 
-                fill="hsl(var(--accent) / 0.2)" 
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+      {/* Steel EPR Credits Section */}
+      <div className="bg-yellow-50 border-2 border-yellow-500 rounded-xl p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-red-600">Steel EPR credits generated (MT) =</span>
+            <span className="font-bold text-lg text-red-700">{steelEPRCreditsStatus.creditsGenerated}</span>
+          </div>
+          <span className="text-sm text-gray-600 italic">(currently to be linked with RVSF steel dispatch volume (MT))</span>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-sm text-red-600 italic font-medium">Linking with CPCB portal</span>
+          <a
+            href={steelEPRCreditsStatus.cpcbPortalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline flex items-center gap-1"
+          >
+            <Link2 className="w-4 h-4" />
+            CPCB Portal
+          </a>
         </div>
       </div>
 
       <Divider />
 
-      {/* Portal Integration Section */}
-      <div className="bg-card rounded-xl p-6 shadow-card">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center">
-            <Shield className="w-5 h-5 text-accent" />
+      {/* Fixed Targets Section */}
+      <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+        <div className="flex items-center gap-3 mb-4">
+          <h3 className="text-lg font-semibold text-foreground">Fixed Targets</h3>
+          <Tag color="blue">View Only</Tag>
+        </div>
+        <Table
+          columns={targetColumns}
+          dataSource={fixedTargets.map((item, i) => ({ ...item, key: i }))}
+          pagination={false}
+          size="middle"
+          bordered
+        />
+      </div>
+
+      {/* India Map Section */}
+      <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+        <div className="flex items-center gap-3 mb-4">
+          <MapPin className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold text-foreground">RVSF Dashboard - Vehicle Origin Map</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Showing density of where vehicles are coming from across India
+        </p>
+        <IndiaMap />
+      </div>
+
+      <Divider />
+
+      {/* AI Insights Section */}
+      <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-xl p-5 shadow-card border border-indigo-200">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+            <Lightbulb className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Portal Integration Status</h3>
-            <p className="text-sm text-muted-foreground">Connected regulatory systems</p>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="pulse-dot" />
-            <span className="text-sm text-accent font-medium">All Systems Linked</span>
+            <h3 className="text-lg font-semibold text-foreground">AI Insights</h3>
+            <p className="text-sm text-muted-foreground">AI suggestions to meet targets</p>
           </div>
         </div>
 
-        <Table
-          columns={portalColumns}
-          dataSource={portalIntegrations.map((item, i) => ({ ...item, key: i }))}
-          pagination={false}
-          size="middle"
-        />
+        <div className="space-y-3">
+          {rvsfAIInsights.map((insight) => (
+            <div
+              key={insight.id}
+              className={`flex items-start gap-3 p-3 rounded-lg border ${insight.impact === 'high'
+                ? 'bg-green-50 border-green-200'
+                : insight.impact === 'medium'
+                  ? 'bg-yellow-50 border-yellow-200'
+                  : 'bg-gray-50 border-gray-200'
+                }`}
+            >
+              <div className="flex-shrink-0 w-6 h-6 bg-white rounded-full flex items-center justify-center text-sm font-bold text-indigo-600 shadow-sm">
+                {insight.id}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-foreground">{insight.suggestion}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Tag
+                    color={insight.impact === 'high' ? 'green' : insight.impact === 'medium' ? 'gold' : 'default'}
+                    className="text-xs"
+                  >
+                    {insight.impact.toUpperCase()} IMPACT
+                  </Tag>
+                  <Tag color="blue" className="text-xs">{insight.category}</Tag>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

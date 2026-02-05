@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  LayoutDashboard, 
-  Users, 
-  Package, 
-  Briefcase, 
+import {
+  Home,
+  LayoutDashboard,
+  Users,
+  Package,
+  Briefcase,
   Database,
   ChevronDown,
   ChevronRight,
@@ -17,7 +17,8 @@ import {
   Wrench,
   HardHat,
   Store,
-  Car
+  Car,
+  AlertCircle
 } from 'lucide-react';
 import matnextLogo from '@/assets/matnext-logo.png';
 
@@ -76,6 +77,12 @@ const menuItems: MenuItem[] = [
     icon: <Database className="w-5 h-5" />,
     path: '/data-view',
   },
+  {
+    key: 'issue-management',
+    label: 'Issue Management',
+    icon: <AlertCircle className="w-5 h-5" />,
+    path: '/issues',
+  },
 ];
 
 const AppSidebar = () => {
@@ -83,9 +90,9 @@ const AppSidebar = () => {
   const [expandedItems, setExpandedItems] = useState<string[]>(['user']);
 
   const toggleExpand = (key: string) => {
-    setExpandedItems(prev => 
-      prev.includes(key) 
-        ? prev.filter(k => k !== key) 
+    setExpandedItems(prev =>
+      prev.includes(key)
+        ? prev.filter(k => k !== key)
         : [...prev, key]
     );
   };
@@ -136,8 +143,8 @@ const AppSidebar = () => {
         to={item.path || '/'}
         className={({ isActive }) => `
           flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors
-          ${isActive 
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' 
+          ${isActive
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
             : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
           }
           ${level > 0 ? 'pl-10 text-sm' : ''}
@@ -153,9 +160,9 @@ const AppSidebar = () => {
     <aside className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
-        <img 
-          src={matnextLogo} 
-          alt="MatNEXT - powered by GenbaNEXT" 
+        <img
+          src={matnextLogo}
+          alt="MatNEXT - powered by GenbaNEXT"
           className="h-12 object-contain"
         />
       </div>

@@ -1,11 +1,12 @@
-import { Bell, Globe, User } from 'lucide-react';
+import { Globe, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import NotificationBell from './NotificationBell';
 
 interface AppHeaderProps {
   title?: string;
 }
 
-const AppHeader = ({ title = "Welcome FFF Moulding" }: AppHeaderProps) => {
+const AppHeader = ({ title = "Welcome Maruti Suzuki India Limited(MSIL)" }: AppHeaderProps) => {
   return (
     <header className="h-14 bg-primary flex items-center justify-between px-6 border-b border-primary/20">
       <h1 className="text-lg font-semibold text-primary-foreground">
@@ -14,9 +15,7 @@ const AppHeader = ({ title = "Welcome FFF Moulding" }: AppHeaderProps) => {
 
       <div className="flex items-center gap-4">
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary/80">
-          <Bell className="w-5 h-5" />
-        </Button>
+        <NotificationBell />
 
         {/* User Profile */}
         <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary/80">

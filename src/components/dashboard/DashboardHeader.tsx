@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Select, DatePicker, Tag, Button } from 'antd';
+import { Select, DatePicker, Tag, Button, notification } from 'antd';
 import { Leaf, Bell, Globe, Settings, Eye } from 'lucide-react';
 import { FilterState, filterOptions } from '@/data/dashboardData';
 import { SetTargetsModal, ViewTargetsModal } from './TargetsModal';
@@ -23,6 +23,19 @@ const DashboardHeader = ({ filters, onFilterChange }: DashboardHeaderProps) => {
 
   const handleSaveTarget = (target: { material: string; fy: string; unit: string; target: number }) => {
     setCustomTargets(prev => [...prev, target]);
+
+    notification.success({
+      message: 'Target Set Successfully',
+      description: `Target for ${target.material} has been updated for ${target.fy}.`,
+      placement: 'topRight',
+      className: '!bg-emerald-50 !border-emerald-200',
+      style: {
+        border: '1px solid #a7f3d0',
+        borderRadius: '12px',
+      },
+      icon: <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center -ml-2"><Leaf className="w-4 h-4 text-emerald-600" /></div>,
+      duration: 4,
+    });
   };
 
   return (
@@ -141,8 +154,8 @@ const DashboardHeader = ({ filters, onFilterChange }: DashboardHeaderProps) => {
                 placeholder="Select materials..."
                 options={filterOptions.allMaterials.map(m => ({ value: m, label: m }))}
                 tagRender={(props) => (
-                  <Tag 
-                    closable={props.closable} 
+                  <Tag
+                    closable={props.closable}
                     onClose={props.onClose}
                     style={{ marginRight: 3, background: 'rgba(16, 185, 129, 0.1)', borderColor: '#10b981', color: '#10b981' }}
                   >
@@ -151,9 +164,9 @@ const DashboardHeader = ({ filters, onFilterChange }: DashboardHeaderProps) => {
                 )}
               />
             </div>
-            
-            <Button 
-              type="primary" 
+
+            <Button
+              type="primary"
               icon={<Settings className="w-4 h-4" />}
               className="bg-[#4b6043] hover:bg-[#5a7350]"
               onClick={() => setSetTargetsOpen(true)}
@@ -161,8 +174,8 @@ const DashboardHeader = ({ filters, onFilterChange }: DashboardHeaderProps) => {
               Set Targets
             </Button>
 
-            <Button 
-              type="default" 
+            <Button
+              type="default"
               icon={<Eye className="w-4 h-4" />}
               onClick={() => setViewTargetsOpen(true)}
             >

@@ -1,4 +1,4 @@
-import { Table, Tag, Progress, Skeleton, Statistic, Divider, Button, Space } from 'antd';
+import { Table, Tag, Progress, Skeleton, Statistic, Divider, Button, Space, Select, Collapse, List } from 'antd';
 import { Star, Package, Download, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { componentData, supplierSummary, componentTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
@@ -101,10 +101,10 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
         return (
           <div className="flex items-center gap-0.5">
             {[...Array(5)].map((_, i) => (
-              <Star 
-                key={i} 
-                className="w-3.5 h-3.5" 
-                fill={i < stars ? color : 'transparent'} 
+              <Star
+                key={i}
+                className="w-3.5 h-3.5"
+                fill={i < stars ? color : 'transparent'}
                 stroke={i < stars ? color : '#d1d5db'}
               />
             ))}
@@ -168,19 +168,23 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
     exportToExcel(
       [
         { name: 'Component Tracking', data: prepareComponentDataForExport(componentData) },
-        { name: 'Monthly Trend', data: componentTrendData.map(t => ({
-          'Month': t.month,
-          'Front Bumper': t.frontBumper,
-          'Rear Bumper': t.rearBumper,
-          'Interior Parts': t.interior,
-          'Dashboard': t.dashboard,
-        })) },
-        { name: 'Summary', data: [{
-          'Total Components': supplierSummary.totalComponents,
-          'Recycled Material Weight (MT)': supplierSummary.recycledMaterialWeight,
-          'Total Material Supplied (MT)': supplierSummary.totalMaterialSupplied,
-          'Average Eco-Score': (componentData.reduce((sum, item) => sum + item.ecoScore, 0) / componentData.length).toFixed(1),
-        }] },
+        {
+          name: 'Monthly Trend', data: componentTrendData.map(t => ({
+            'Month': t.month,
+            'Front Bumper': t.frontBumper,
+            'Rear Bumper': t.rearBumper,
+            'Interior Parts': t.interior,
+            'Dashboard': t.dashboard,
+          }))
+        },
+        {
+          name: 'Summary', data: [{
+            'Total Components': supplierSummary.totalComponents,
+            'Recycled Material Weight (MT)': supplierSummary.recycledMaterialWeight,
+            'Total Material Supplied (MT)': supplierSummary.totalMaterialSupplied,
+            'Average Eco-Score': (componentData.reduce((sum, item) => sum + item.ecoScore, 0) / componentData.length).toFixed(1),
+          }]
+        },
       ],
       'Suppliers_Supply_Chain',
       filters
@@ -201,20 +205,32 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-foreground mb-1">Suppliers Overview - Supply Chain</h2>
-          <p className="text-sm text-muted-foreground">
-            Component tracking and sustainability scoring • FY {financialYear}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted-foreground">
+              Component tracking and sustainability scoring • FY {financialYear}
+            </p>
+            <Select
+              placeholder="Select Supplier"
+              style={{ width: 220 }}
+              allowClear
+              options={[
+                { value: 'Supplier X', label: 'AutoComponent India' },
+                { value: 'Supplier Y', label: 'Future Mobility Parts' },
+                { value: 'Supplier Z', label: 'Sustainable Steels' },
+              ]}
+            />
+          </div>
         </div>
         <Space>
-          <Button 
-            icon={<Download className="w-4 h-4" />} 
+          <Button
+            icon={<Download className="w-4 h-4" />}
             onClick={handleExportCSV}
           >
             Export CSV
           </Button>
-          <Button 
+          <Button
             type="primary"
-            icon={<FileSpreadsheet className="w-4 h-4" />} 
+            icon={<FileSpreadsheet className="w-4 h-4" />}
             onClick={handleExportExcel}
             className="bg-[#4b6043] hover:bg-[#5a7350]"
           >
@@ -252,23 +268,50 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
         </div>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 flex items-start gap-3">
-        <div className="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Star className="w-5 h-5 text-accent" />
-        </div>
-        <div>
-          <h4 className="font-medium text-foreground">Eco-Score Calculation</h4>
-          <p className="text-sm text-muted-foreground mt-1">
-            Eco-Score is calculated based on the 5MT recycled weight ratio. Components with scores ≥5 are excellent, ≥4 are good, and below 4 need improvement.
-          </p>
-        </div>
-      </div>
+      {/* Expanded Eco-Score Details */}
+      <Collapse
+        className="bg-card border-border mb-6"
+        items={[
+          {
+            key: '1',
+            label: (
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                <Star className="w-4 h-4 text-accent" />
+                Eco-Score Calculation Parameters (Score out of 10)
+              </div>
+            ),
+            children: (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  The Eco-Score is a composite metric derived from multiple sustainability factors. High scores enable green credits.
+                </p>
+                <List
+                  size="small"
+                  bordered
+                  dataSource={[
+                    'Recycled Content Percentage (40% Weightage)',
+                    'Carbon Footprint in Logistics (30% Weightage)',
+                    'Material Circularity Potential (20% Weightage)',
+                    'Supplier Compliance Rating (10% Weightage)',
+                  ]}
+                  renderItem={(item) => <List.Item className="text-sm">{item}</List.Item>}
+                />
+                <div className="flex gap-4 mt-2">
+                  <Tag color="green">Excellent (≥ 5.0)</Tag>
+                  <Tag color="gold">Good (4.0 - 4.9)</Tag>
+                  <Tag color="orange">Average (3.0 - 3.9)</Tag>
+                  <Tag color="red">Poor (&lt; 3.0)</Tag>
+                </div>
+              </div>
+            )
+          }
+        ]}
+      />
 
       {/* Component Tracking - Charts + Table */}
       <div className="bg-card rounded-xl p-6 shadow-card">
         <h3 className="text-lg font-semibold mb-6">Component Tracking</h3>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Bar Chart - Quantities */}
           <div>
@@ -277,8 +320,8 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     angle={-30}
                     textAnchor="end"

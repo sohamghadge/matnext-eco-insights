@@ -1,4 +1,4 @@
-import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space } from 'antd';
+import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space, Select } from 'antd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet, Star } from 'lucide-react';
 import { plasticBreakdown, recyclerStats, recyclerSummary, recyclerTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
@@ -12,7 +12,7 @@ interface RecyclersTabProps {
 
 const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
   const financialYear = getFinancialYear(filters.dateFrom);
-  
+
   const pieData = plasticBreakdown.map(item => ({
     name: item.type,
     value: item.quantity,
@@ -111,20 +111,24 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
     exportToExcel(
       [
         { name: 'Plastic Breakdown', data: prepareRecyclerDataForExport(plasticBreakdown) },
-        { name: 'Recycler Statistics', data: recyclerStats.map(s => ({
-          'Metric': s.metric,
-          'Value': s.value,
-          'Unit': s.unit,
-          'Target Market': s.targetMarket,
-          'Financial Year': s.financialYear,
-          'Plant': s.plant,
-        })) },
-        { name: 'Monthly Trend', data: recyclerTrendData.map(t => ({
-          'Month': t.month,
-          'Input (MT)': t.input,
-          'Output (MT)': t.output,
-          'Efficiency %': ((t.output / t.input) * 100).toFixed(2) + '%',
-        })) },
+        {
+          name: 'Recycler Statistics', data: recyclerStats.map(s => ({
+            'Metric': s.metric,
+            'Value': s.value,
+            'Unit': s.unit,
+            'Target Market': s.targetMarket,
+            'Financial Year': s.financialYear,
+            'Plant': s.plant,
+          }))
+        },
+        {
+          name: 'Monthly Trend', data: recyclerTrendData.map(t => ({
+            'Month': t.month,
+            'Input (MT)': t.input,
+            'Output (MT)': t.output,
+            'Efficiency %': ((t.output / t.input) * 100).toFixed(2) + '%',
+          }))
+        },
       ],
       'Recyclers_Material_Processing',
       filters
@@ -145,20 +149,32 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-foreground mb-1">Recyclers Overview - Material Processing</h2>
-          <p className="text-sm text-muted-foreground">
-            Plastic breakdown and recycling efficiency metrics • FY {financialYear}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted-foreground">
+              Plastic breakdown and yield percentage metrics • FY {financialYear}
+            </p>
+            <Select
+              placeholder="Select Recycler"
+              style={{ width: 220 }}
+              allowClear
+              options={[
+                { value: 'Recycler A', label: 'Global Recyclers Ltd' },
+                { value: 'Recycler B', label: 'EcoPlastic Solutions' },
+                { value: 'Recycler C', label: 'Green Earth Polymers' },
+              ]}
+            />
+          </div>
         </div>
         <Space>
-          <Button 
-            icon={<Download className="w-4 h-4" />} 
+          <Button
+            icon={<Download className="w-4 h-4" />}
             onClick={handleExportCSV}
           >
             Export CSV
           </Button>
-          <Button 
+          <Button
             type="primary"
-            icon={<FileSpreadsheet className="w-4 h-4" />} 
+            icon={<FileSpreadsheet className="w-4 h-4" />}
             onClick={handleExportExcel}
             className="bg-[#4b6043] hover:bg-[#5a7350]"
           >
@@ -187,7 +203,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
         </div>
         <div className="bg-card rounded-xl p-5 shadow-card text-center">
           <Statistic
-            title={<span className="text-muted-foreground">Recycling Efficiency</span>}
+            title={<span className="text-muted-foreground">Yield Percentage</span>}
             value={recyclerSummary.efficiency}
             suffix="%"
             valueStyle={{ color: 'hsl(var(--accent))', fontWeight: 700, fontSize: '2rem' }}
@@ -199,7 +215,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
       {/* Plastic Breakdown - Chart + Table */}
       <div className="bg-card rounded-xl p-6 shadow-card">
         <h3 className="text-lg font-semibold mb-6">Plastic Material Breakdown</h3>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Pie Chart */}
           <div className="h-[300px]">
@@ -276,7 +292,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
                 </div>
                 <p className="text-sm text-muted-foreground">Input (MT)</p>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <ArrowRight className="w-8 h-8 text-accent" />
                 <Recycle className="w-12 h-12 text-accent animate-spin" style={{ animationDuration: '8s' }} />
@@ -294,31 +310,48 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
             {/* Efficiency Bar with color coding */}
             <div className="w-full max-w-md p-4 bg-secondary/30 rounded-xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Recycling Efficiency</span>
-                <span 
+                <span className="text-sm font-medium">Yield Percentage</span>
+                <span
                   className="text-lg font-bold"
                   style={{ color: getProgressColor(recycleRatio) }}
                 >
                   {recycleRatio}%
                 </span>
               </div>
-              <Progress
-                percent={recycleRatio}
-                strokeColor={getProgressColor(recycleRatio)}
-                trailColor="hsl(var(--muted))"
-                showInfo={false}
-                strokeWidth={12}
-              />
+              <div className="relative pt-4">
+                {/* Target Marker */}
+                <div
+                  className="absolute top-0 flex flex-col items-center"
+                  style={{ left: '80%', transform: 'translateX(-50%)' }}
+                >
+                  <span className="text-[10px] font-bold text-gray-500 mb-0.5">Target</span>
+                  <div className="h-3 w-0.5 bg-black"></div>
+                </div>
+
+                <Progress
+                  percent={recycleRatio}
+                  strokeColor={getProgressColor(recycleRatio)}
+                  trailColor="hsl(var(--muted))"
+                  showInfo={false}
+                  strokeWidth={12}
+                />
+              </div>
+
+              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                <span>0%</span>
+                <span className="font-semibold text-black">Target: 80%</span>
+                <span>100%</span>
+              </div>
               {/* Star rating */}
               <div className="flex items-center justify-center gap-1 mt-3">
                 {[...Array(5)].map((_, i) => {
                   const stars = recycleRatio >= 80 ? 5 : recycleRatio >= 60 ? 4 : recycleRatio >= 40 ? 3 : recycleRatio >= 20 ? 2 : 1;
                   const color = stars >= 4 ? '#16a34a' : stars >= 3 ? '#eab308' : '#dc2626';
                   return (
-                    <Star 
-                      key={i} 
-                      className="w-4 h-4" 
-                      fill={i < stars ? color : 'transparent'} 
+                    <Star
+                      key={i}
+                      className="w-4 h-4"
+                      fill={i < stars ? color : 'transparent'}
                       stroke={i < stars ? color : '#d1d5db'}
                     />
                   );

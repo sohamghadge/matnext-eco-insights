@@ -1,14 +1,14 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/card';
-import { 
-  UserCircle, 
-  Building, 
-  Recycle, 
-  Factory, 
-  Store, 
-  Wrench, 
-  HardHat, 
-  Car, 
+import {
+  UserCircle,
+  Building,
+  Recycle,
+  Factory,
+  Store,
+  Wrench,
+  HardHat,
+  Car,
   Truck,
   ClipboardList,
   Package,
@@ -23,7 +23,7 @@ interface QuickActionCardProps {
 }
 
 const QuickActionCard = ({ icon, label, to }: QuickActionCardProps) => (
-  <Link 
+  <Link
     to={to}
     className="flex items-center gap-3 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-3 rounded-lg transition-colors"
   >
@@ -34,7 +34,7 @@ const QuickActionCard = ({ icon, label, to }: QuickActionCardProps) => (
 
 const Home = () => {
   return (
-    <AppLayout title="Welcome FFF Moulding">
+    <AppLayout title="Welcome Maruti Suzuki India Limited(MSIL)">
       <div className="p-6">
         <h2 className="text-2xl font-bold text-foreground mb-6">Home</h2>
 

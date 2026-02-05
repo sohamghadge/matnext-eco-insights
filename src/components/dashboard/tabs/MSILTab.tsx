@@ -12,9 +12,9 @@ interface MSILTabProps {
 
 const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
   const financialYear = getFinancialYear(filters.dateFrom);
-  
+
   // Filter material targets based on selected materials
-  const filteredMaterials = filters.materials.length > 0 
+  const filteredMaterials = filters.materials.length > 0
     ? materialTargets.filter(m => filters.materials.includes(m.material))
     : materialTargets;
 
@@ -56,12 +56,11 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
       title: 'Progress',
       key: 'progress',
       render: (_: unknown, record: { percentage: number }) => {
-        const normalizedPercent = Math.min(record.percentage * 10, 100);
-        const progressColor = getProgressColor(normalizedPercent);
+        const progressColor = getProgressColor(record.percentage);
         return (
-          <Progress 
-            percent={normalizedPercent} 
-            size="small" 
+          <Progress
+            percent={record.percentage}
+            size="small"
             strokeColor={progressColor}
             format={() => `${record.percentage.toFixed(1)}%`}
           />
@@ -77,10 +76,10 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
         return (
           <div className="flex items-center gap-0.5">
             {[...Array(5)].map((_, i) => (
-              <Star 
-                key={i} 
-                className="w-3.5 h-3.5" 
-                fill={i < stars ? color : 'transparent'} 
+              <Star
+                key={i}
+                className="w-3.5 h-3.5"
+                fill={i < stars ? color : 'transparent'}
                 stroke={i < stars ? color : '#d1d5db'}
               />
             ))}
@@ -236,15 +235,15 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
           </p>
         </div>
         <Space>
-          <Button 
-            icon={<Download className="w-4 h-4" />} 
+          <Button
+            icon={<Download className="w-4 h-4" />}
             onClick={handleExportCSV}
           >
             Export CSV
           </Button>
-          <Button 
+          <Button
             type="primary"
-            icon={<FileSpreadsheet className="w-4 h-4" />} 
+            icon={<FileSpreadsheet className="w-4 h-4" />}
             onClick={handleExportExcel}
             className="bg-[#4b6043] hover:bg-[#5a7350]"
           >
@@ -286,7 +285,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
             <span>% Achieved</span>
           </div>
         </div>
-        
+
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : (
@@ -294,20 +293,20 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={barChartData} margin={{ top: 20, right: 60, left: 20, bottom: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="name" 
+                <XAxis
+                  dataKey="name"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                   angle={-45}
                   textAnchor="end"
                   height={80}
                   interval={0}
                 />
-                <YAxis 
+                <YAxis
                   yAxisId="left"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                   label={{ value: 'Quantity (MT)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
                 />
-                <YAxis 
+                <YAxis
                   yAxisId="right"
                   orientation="right"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
@@ -340,7 +339,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Material-Wise Target vs Achievement (All {filteredMaterials.length} Materials)</h3>
         </div>
-        
+
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : (

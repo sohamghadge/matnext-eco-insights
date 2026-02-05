@@ -25,7 +25,7 @@ export const filterOptions = {
   // All 21 materials from the screenshot
   allMaterials: [
     'Steel',
-    'Aluminium', 
+    'Aluminium',
     'Copper',
     'Plastic',
     'Glass',
@@ -175,19 +175,177 @@ export interface PortalIntegration {
 }
 
 export const portalIntegrations: PortalIntegration[] = [
-  { 
-    portalName: 'CPCB Portal', 
-    status: 'linked', 
+  {
+    portalName: 'CPCB Portal',
+    status: 'linked',
     lastSync: '2025-04-15 14:30:00',
     url: 'https://cpcb.nic.in'
   },
-  { 
-    portalName: 'VAHAN (Voluntary Vehicle Scrapper)', 
-    status: 'linked', 
+  {
+    portalName: 'VAHAN (Voluntary Vehicle Scrapper)',
+    status: 'linked',
     lastSync: '2025-04-15 14:25:00',
     url: 'https://vscrap.parivahan.gov.in'
   },
 ];
+
+// ============================================
+// TAB 2 (Extended): RVSF Dashboard Data
+// ============================================
+
+// RVSF Filter Options
+export const rvsfFilterOptions = {
+  sources: ['Collection Center', 'Individual'],
+  elvMakes: ['Maruti Suzuki', 'Tata Motors', 'Mahindra', 'Honda', 'Hyundai'],
+  makeYears: ['2005-06', '2006-07', '2007-08', '2008-09', '2009-10', '2010-11', '2011-12', '2012-13', '2013-14', '2014-15'],
+};
+
+// RVSF Summary Statistics
+export interface RVSFSummaryStats {
+  vehiclesScrapped: number;
+  inventory: { value: number; unit: string };
+  codGenerated: number;
+  msilTestVehiclesScrapped: number;
+  collectionCentres: number;
+}
+
+export const rvsfSummaryStats: RVSFSummaryStats = {
+  vehiclesScrapped: 8542,
+  inventory: { value: 45678, unit: 'kg' },
+  codGenerated: 5234,
+  msilTestVehiclesScrapped: 6128,
+  collectionCentres: 47,
+};
+
+// Scrap Dispatch Details
+export interface ScrapDispatchDetails {
+  material: string;
+  value: number;
+  unit: string;
+}
+
+export const scrapDispatchDetails: ScrapDispatchDetails[] = [
+  { material: 'Steel', value: 892.5, unit: 'MT/kg' },
+  { material: 'Plastic', value: 234.8, unit: 'MT/kg' },
+  { material: 'Cast Iron', value: 156.2, unit: 'MT/kg' },
+  { material: 'Li-Ion Batteries', value: 45.6, unit: 'MT/kg' },
+];
+
+// MSIL Components Dispatch Details
+export const msilComponentsDispatchDetails: ScrapDispatchDetails[] = [
+  { material: 'Steel', value: 678.3, unit: 'MT/kg' },
+  { material: 'Plastic', value: 189.4, unit: 'MT/kg' },
+  { material: 'Cast Iron', value: 123.7, unit: 'MT/kg' },
+  { material: 'Li-Ion Batteries', value: 34.2, unit: 'MT/kg' },
+];
+
+// Monthwise CD (Certificate of Deposit) Generated
+export interface MonthwiseCDData {
+  month: string;
+  value: number;
+  color: string;
+}
+
+export const monthwiseCDData: MonthwiseCDData[] = [
+  { month: 'JUL', value: 810, color: '#ec4899' },
+  { month: 'AUG', value: 420, color: '#a855f7' },
+  { month: 'SEP', value: 510, color: '#22d3d3' },
+  { month: 'OCT', value: 520, color: '#eab308' },
+  { month: 'NOV', value: 420, color: '#22c55e' },
+  { month: 'DEC', value: 430, color: '#06b6d4' },
+];
+
+// MSIL Test Vehicles Scrapped Monthly
+export interface MSILTestVehiclesData {
+  month: string;
+  value: number;
+  color: string;
+}
+
+export const msilTestVehiclesData: MSILTestVehiclesData[] = [
+  { month: 'JAN', value: 680, color: '#ec4899' },
+  { month: 'FEB', value: 420, color: '#a855f7' },
+  { month: 'MAR', value: 510, color: '#22d3d3' },
+  { month: 'APR', value: 560, color: '#eab308' },
+  { month: 'MAY', value: 620, color: '#22c55e' },
+  { month: 'JUN', value: 580, color: '#06b6d4' },
+  { month: 'JUL', value: 490, color: '#3b82f6' },
+  { month: 'AUG', value: 430, color: '#f97316' },
+  { month: 'SEP', value: 550, color: '#8b5cf6' },
+  { month: 'OCT', value: 410, color: '#14b8a6' },
+  { month: 'NOV', value: 650, color: '#f59e0b' },
+  { month: 'DEC', value: 450, color: '#a1a1aa' },
+];
+
+// Fixed Targets
+export interface FixedTarget {
+  targetYear: string;
+  targetVehiclesScrapped: number;
+  targetWeightScrapped: string;
+}
+
+export const fixedTargets: FixedTarget[] = [
+  { targetYear: '2025/2026', targetVehiclesScrapped: 12500, targetWeightScrapped: '1,20,00,000 kg' },
+  { targetYear: '2026/2027', targetVehiclesScrapped: 15000, targetWeightScrapped: '1,50,00,000 kg' },
+];
+
+// Vehicle Origin Locations for India Map
+export interface VehicleOriginLocation {
+  state: string;
+  lat: number;
+  lng: number;
+  density: number; // 1-10 scale
+  vehicleCount: number;
+}
+
+export const vehicleOriginLocations: VehicleOriginLocation[] = [
+  { state: 'Maharashtra', lat: 19.7515, lng: 75.7139, density: 9, vehicleCount: 1250 },
+  { state: 'Delhi NCR', lat: 28.7041, lng: 77.1025, density: 10, vehicleCount: 1580 },
+  { state: 'Gujarat', lat: 22.2587, lng: 71.1924, density: 8, vehicleCount: 980 },
+  { state: 'Tamil Nadu', lat: 11.1271, lng: 78.6569, density: 7, vehicleCount: 820 },
+  { state: 'Karnataka', lat: 15.3173, lng: 75.7139, density: 7, vehicleCount: 780 },
+  { state: 'Rajasthan', lat: 27.0238, lng: 74.2179, density: 6, vehicleCount: 650 },
+  { state: 'Uttar Pradesh', lat: 26.8467, lng: 80.9462, density: 8, vehicleCount: 920 },
+  { state: 'Madhya Pradesh', lat: 22.9734, lng: 78.6569, density: 5, vehicleCount: 540 },
+  { state: 'West Bengal', lat: 22.9868, lng: 87.855, density: 6, vehicleCount: 620 },
+  { state: 'Punjab', lat: 31.1471, lng: 75.3412, density: 5, vehicleCount: 480 },
+  { state: 'Haryana', lat: 29.0588, lng: 76.0856, density: 7, vehicleCount: 750 },
+  { state: 'Kerala', lat: 10.8505, lng: 76.2711, density: 4, vehicleCount: 380 },
+  { state: 'Telangana', lat: 18.1124, lng: 79.0193, density: 6, vehicleCount: 590 },
+  { state: 'Andhra Pradesh', lat: 15.9129, lng: 79.74, density: 5, vehicleCount: 520 },
+  { state: 'Odisha', lat: 20.9517, lng: 85.0985, density: 3, vehicleCount: 280 },
+];
+
+// AI Insights for RVSF
+export interface AIInsight {
+  id: number;
+  suggestion: string;
+  impact: 'high' | 'medium' | 'low';
+  category: string;
+}
+
+export const rvsfAIInsights: AIInsight[] = [
+  { id: 1, suggestion: 'Increase sourcing from South India (Tamil Nadu, Karnataka, Kerala) to meet Q4 targets - potential 25% increase in collection volume', impact: 'high', category: 'Sourcing' },
+  { id: 2, suggestion: 'Partner with 5 additional Collection Centers in Delhi NCR region to capitalize on high vehicle density', impact: 'high', category: 'Partnership' },
+  { id: 3, suggestion: 'Optimize logistics routes in Western corridor (Gujarat-Maharashtra) to reduce transportation costs by 15%', impact: 'medium', category: 'Operations' },
+  { id: 4, suggestion: 'Focus on pre-2010 vehicle models which have higher scrap value and easier dismantling process', impact: 'medium', category: 'Strategy' },
+  { id: 5, suggestion: 'Implement predictive maintenance scheduling for RVSF equipment to reduce downtime by 20%', impact: 'low', category: 'Maintenance' },
+];
+
+// Steel EPR Credits Status
+export interface SteelEPRCreditsStatus {
+  creditsGenerated: number;
+  unit: string;
+  linkedToDispatch: boolean;
+  cpcbPortalUrl: string;
+}
+
+export const steelEPRCreditsStatus: SteelEPRCreditsStatus = {
+  creditsGenerated: 892.5,
+  unit: 'MT',
+  linkedToDispatch: false,
+  cpcbPortalUrl: 'https://cpcb.nic.in',
+};
 
 // ============================================
 // TAB 3: Recyclers (Material Processing) Data
@@ -221,7 +379,7 @@ export interface RecyclerStats {
 export const recyclerStats: RecyclerStats[] = [
   { metric: 'Recycled Material Weight', value: 5.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
   { metric: 'Total Material Supplied', value: 100.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
-  { metric: 'Recycling Efficiency', value: 5.00, unit: '%', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
+  { metric: 'Yield Percentage', value: 5.00, unit: '%', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon' },
 ];
 
 export const recyclerSummary = {

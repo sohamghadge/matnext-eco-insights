@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Tabs, ConfigProvider } from 'antd';
 import { Building2, Recycle, Factory, Truck } from 'lucide-react';
-import DashboardHeader from './DashboardHeader';
 import MSILTab from './tabs/MSILTab';
 import RVSFTab from './tabs/RVSFTab';
 import RecyclersTab from './tabs/RecyclersTab';
@@ -16,7 +15,7 @@ const Dashboard = () => {
   const handleFilterChange = useCallback((key: keyof FilterState, value: string | string[] | Date) => {
     setIsLoading(true);
     setFilters(prev => ({ ...prev, [key]: value }));
-    
+
     // Simulate data fetching
     setTimeout(() => {
       setIsLoading(false);
@@ -101,7 +100,7 @@ const Dashboard = () => {
   return (
     <ConfigProvider theme={antdTheme}>
       <div className="bg-background">
-        <DashboardHeader filters={filters} onFilterChange={handleFilterChange} />
+        {/* Header removed for iframe embedding */}
 
         <div className="px-6 py-6">
           {/* Tabs */}

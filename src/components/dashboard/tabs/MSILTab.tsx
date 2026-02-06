@@ -321,7 +321,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
                   }}
                   formatter={(value: number, name: string) => {
                     if (name === 'Achievement %') return [`${value.toFixed(2)}%`, name];
-                    return [value.toLocaleString(), name];
+                    return [`${value.toLocaleString()} nos`, name];
                   }}
                 />
                 <Legend wrapperStyle={{ paddingTop: 20 }} />
@@ -371,6 +371,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                   }}
+                  formatter={(value: number, name: string) => [`${value.toLocaleString()} nos`, name]}
                 />
                 <Legend />
                 <Line type="monotone" dataKey="steel" name="Steel" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} />

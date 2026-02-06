@@ -390,6 +390,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                 }}
+                formatter={(value: number, name: string) => [`${value.toLocaleString()} MT`, name]}
               />
               <Legend />
               <Line type="monotone" dataKey="input" name="Total Input (MT)" stroke="#64748b" strokeWidth={2} dot={{ r: 4 }} />

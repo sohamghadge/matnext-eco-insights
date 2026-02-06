@@ -1,9 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Custom Color Palette for Iframe Embedding */
+:root {
+  --color-primary: #547a1d;
+  --color-primary-dark: #547a1d;
+  --color-primary-medium: #a7e074;
+  --color-primary-light: #c0ec83;
+  --color-primary-xlight: #c9f48f;
+  --color-primary-ylight: #f8ffef;
+  --color-black: #000;
+  --color-white: #fff;
+  --color-mandatory: #ff4d4f;
+  --color-red: #ff7171;
+  --color-green: #92ca6d;
+  --color-disable: #b8b8b8;
+  --light-gray: #ddd;
+  --primary-light-gray: #cdcdcd;
+  --color-bg: rgb(255, 255, 255);
+  --color-link: rgb(49, 61, 236);
+  --light-yellow: #fffbe6;
+  --yellow: #ffe58f;
+  --color-font: #fff;
+}
+
 /* Matnext Sustainability Dashboard Design System */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {

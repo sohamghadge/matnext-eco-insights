@@ -215,7 +215,7 @@ const RVSFTab = ({ isLoading, filters: _filters }: RVSFTabProps) => {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                   }}
-                  formatter={(value: number) => [`${value}`, 'CD Generated']}
+                  formatter={(value: number) => [`${value} nos`, 'CD Generated']}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {monthwiseCDData.map((entry, index) => (
@@ -260,7 +260,7 @@ const RVSFTab = ({ isLoading, filters: _filters }: RVSFTabProps) => {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                   }}
-                  formatter={(value: number) => [`${value}`, 'Vehicles Scrapped']}
+                  formatter={(value: number) => [`${value} nos`, 'Vehicles Scrapped']}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {msilTestVehiclesData.map((entry, index) => (

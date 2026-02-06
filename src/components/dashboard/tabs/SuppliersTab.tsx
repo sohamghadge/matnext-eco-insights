@@ -335,6 +335,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
                     }}
+                    formatter={(value: number, name: string) => [`${value.toLocaleString()} nos`, name]}
                   />
                   <Legend />
                   <Bar dataKey="Quantity" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
@@ -430,6 +431,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                   }}
+                  formatter={(value: number) => [`${value.toFixed(1)} pts`, 'Eco-Score']}
                 />
                 <Bar
                   dataKey="score"
@@ -457,6 +459,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                   }}
+                  formatter={(value: number, name: string) => [`${value.toLocaleString()} nos`, name]}
                 />
                 <Legend />
                 <Line type="monotone" dataKey="frontBumper" name="Front Bumper" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />

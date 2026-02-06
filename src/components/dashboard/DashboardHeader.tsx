@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Select, DatePicker, Tag, Button, notification } from 'antd';
-import { Leaf, Bell, Globe, Settings, Eye } from 'lucide-react';
+import { Leaf, Settings, Eye } from 'lucide-react';
 import { FilterState, filterOptions } from '@/data/dashboardData';
 import { SetTargetsModal, ViewTargetsModal } from './TargetsModal';
 import dayjs, { Dayjs } from 'dayjs';
@@ -41,32 +41,6 @@ const DashboardHeader = ({ filters, onFilterChange }: DashboardHeaderProps) => {
   return (
     <>
       <header className="dashboard-header sticky top-0 z-50 shadow-lg">
-        {/* Top Bar */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-              <Leaf className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white tracking-tight">Welcome Maruti Suzuki India Limited (MSIL)</h1>
-              <p className="text-xs text-white/70">Sustainability Analytics Dashboard</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
-              <Bell className="w-5 h-5 text-white" />
-            </button>
-            <div className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
-              <Globe className="w-4 h-4 text-white" />
-              <span className="text-sm text-white">English</span>
-            </div>
-            <div className="w-9 h-9 bg-emerald-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-              MN
-            </div>
-          </div>
-        </div>
-
         {/* Filter Bar - Row 1 */}
         <div className="glass px-6 py-4">
           <div className="flex flex-wrap items-end gap-4">

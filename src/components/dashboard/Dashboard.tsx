@@ -5,6 +5,7 @@ import MSILTab from './tabs/MSILTab';
 import RVSFTab from './tabs/RVSFTab';
 import RecyclersTab from './tabs/RecyclersTab';
 import SuppliersTab from './tabs/SuppliersTab';
+import DashboardHeader from './DashboardHeader';
 import { FilterState, defaultFilters } from '@/data/dashboardData';
 
 const Dashboard = () => {
@@ -100,7 +101,8 @@ const Dashboard = () => {
   return (
     <ConfigProvider theme={antdTheme}>
       <div className="bg-background">
-        {/* Header removed for iframe embedding */}
+        {/* Dashboard Header with filters and targets */}
+        <DashboardHeader filters={filters} onFilterChange={handleFilterChange} />
 
         <div className="px-6 py-6">
           {/* Tabs */}

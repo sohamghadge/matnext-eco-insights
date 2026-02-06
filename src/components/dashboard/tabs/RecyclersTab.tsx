@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space, Select } from 'antd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet, Star } from 'lucide-react';
@@ -13,6 +14,29 @@ interface RecyclersTabProps {
 const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
   const financialYear = getFinancialYear(filters.dateFrom);
 
+  // Date-based dynamic recycled material percentage calculation
+  // Values change based on the selected date range to simulate real-time data
+  const dynamicRecyclerData = useMemo(() => {
+    const baseEfficiency = recyclerSummary.efficiency;
+    const baseRecycledWeight = recyclerSummary.recycledWeight;
+    const baseTotalSupplied = recyclerSummary.totalSupplied;
+
+    // Calculate a date factor based on the month (simulates seasonal variation)
+    const month = filters.dateFrom.getMonth();
+    const dayOfMonth = filters.dateFrom.getDate();
+    const dateFactor = 1 + ((month % 3) * 0.05) + (dayOfMonth / 100 * 0.1); // ±5-15% variation
+
+    // Apply date factor to simulate dynamic values
+    const adjustedRecycledWeight = Math.round(baseRecycledWeight * dateFactor * 10) / 10;
+    const adjustedEfficiency = Math.min(100, Math.round(baseEfficiency * dateFactor * 10) / 10);
+
+    return {
+      recycledWeight: adjustedRecycledWeight,
+      totalSupplied: baseTotalSupplied,
+      efficiency: adjustedEfficiency,
+    };
+  }, [filters.dateFrom]);
+
   const pieData = plasticBreakdown.map(item => ({
     name: item.type,
     value: item.quantity,
@@ -20,7 +44,8 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
     color: item.color,
   }));
 
-  const recycleRatio = recyclerSummary.efficiency;
+  // Use dynamic efficiency for recycle ratio
+  const recycleRatio = dynamicRecyclerData.efficiency;
 
   // Plastic Breakdown Table Columns with additional columns
   const plasticColumns = [
@@ -301,7 +326,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
 
               <div className="text-center">
                 <div className="w-24 h-24 bg-accent/20 rounded-full flex items-center justify-center mb-2 shadow-lg">
-                  <span className="text-2xl font-bold text-accent">{recyclerSummary.recycledWeight}</span>
+                  <span className="text-2xl font-bold text-accent">{dynamicRecyclerData.recycledWeight}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">Output (MT)</p>
               </div>

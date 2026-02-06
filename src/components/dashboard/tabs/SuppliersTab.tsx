@@ -82,7 +82,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
             <Tag color={color} className="m-0">
               <div className="flex items-center gap-1">
                 <Star className="w-3 h-3" fill="currentColor" />
-                <span>{score.toFixed(1)}</span>
+                <span className="font-bold">{score.toFixed(1)}/10</span>
               </div>
             </Tag>
             <span className="text-xs text-muted-foreground">
@@ -271,6 +271,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
       {/* Expanded Eco-Score Details */}
       <Collapse
         className="bg-card border-border mb-6"
+        defaultActiveKey={['1']}
         items={[
           {
             key: '1',
@@ -344,21 +345,21 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
             </div>
           </div>
 
-          {/* Pie Chart - Distribution */}
+          {/* Pie Chart - Distribution - Fixed layout */}
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-3">Component Distribution</h4>
-            <div className="h-[250px]">
+            <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart margin={{ top: 10, right: 10, bottom: 50, left: 10 }}>
                   <Pie
                     data={pieData}
                     cx="50%"
-                    cy="50%"
+                    cy="45%"
                     innerRadius={50}
                     outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, value }) => `${value}`}
+                    label={({ value }) => `${value}`}
                     labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
                   >
                     {pieData.map((entry, index) => (
@@ -471,7 +472,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

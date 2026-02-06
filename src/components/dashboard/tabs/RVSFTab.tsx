@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { DatePicker, Select, Button, Table, Tag, Skeleton, Divider } from 'antd';
-import { RefreshCw, ExternalLink, MapPin, Lightbulb, Link2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { DatePicker, Select, Button, Table, Tag, Skeleton, Divider, Radio, message } from 'antd';
+import { RefreshCw, ExternalLink, MapPin, Lightbulb, Link2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import dayjs from 'dayjs';
 import IndiaMap from '../IndiaMap';
 import {
@@ -28,6 +28,36 @@ const RVSFTab = ({ isLoading, filters: _filters }: RVSFTabProps) => {
   const [elvMake, setElvMake] = useState('Maruti Suzuki');
   const [makeYear, setMakeYear] = useState('2005-06');
   const [source, setSource] = useState('Collection Center');
+
+  // Map view and AI feedback state
+  const [mapViewMode, setMapViewMode] = useState<'origin' | 'collection' | 'rvsf'>('origin');
+  const [rvsfFilter, setRvsfFilter] = useState('All');
+  const [feedbackState, setFeedbackState] = useState<Record<number, 'up' | 'down' | null>>({});
+
+  // RVSF options for dropdown
+  const rvsfOptions = [
+    { value: 'All', label: 'All RVSFs' },
+    { value: 'MSTI Noida', label: 'MSTI Noida' },
+    { value: 'MSTI Gujarat', label: 'MSTI Gujarat' },
+    { value: 'MSTI South', label: 'MSTI South' },
+    { value: 'MSTI West', label: 'MSTI West' },
+  ];
+
+  // Handle AI insight feedback
+  const handleFeedback = (insightId: number, type: 'up' | 'down') => {
+    setFeedbackState(prev => ({
+      ...prev,
+      [insightId]: prev[insightId] === type ? null : type,
+    }));
+    message.success(type === 'up' ? 'Thanks for the positive feedback!' : 'Feedback noted. We\'ll improve this insight.');
+  };
+
+  // Chart data for MSIL Component Dispatch
+  const msilDispatchChartData = msilComponentsDispatchDetails.map(item => ({
+    name: item.material,
+    value: item.value,
+    unit: item.unit,
+  }));
 
   // Fixed Targets Table Columns
   const targetColumns = [
@@ -273,6 +303,41 @@ const RVSFTab = ({ isLoading, filters: _filters }: RVSFTabProps) => {
         </div>
       </div>
 
+      {/* MSIL Component Dispatch Visualization */}
+      <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-primary underline">MSIL Component Dispatch Overview</h3>
+          <Tag color="green">Active</Tag>
+        </div>
+        <div className="h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={msilDispatchChartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                angle={-30}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+              />
+              <RechartsTooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                }}
+                formatter={(value: number, _name: string, props: { payload: { unit: string } }) => [`${value.toLocaleString()} ${props.payload.unit}`, 'Dispatched']}
+              />
+              <Legend />
+              <Bar dataKey="value" name="Dispatch Volume" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {/* Steel EPR Credits Section */}
       <div className="bg-yellow-50 border-2 border-yellow-500 rounded-xl p-4">
         <div className="flex flex-wrap items-center gap-4">
@@ -315,14 +380,39 @@ const RVSFTab = ({ isLoading, filters: _filters }: RVSFTabProps) => {
 
       {/* India Map Section */}
       <div className="bg-card rounded-xl p-5 shadow-card border border-border">
-        <div className="flex items-center gap-3 mb-4">
-          <MapPin className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">RVSF Dashboard - Vehicle Origin Map</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <MapPin className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">RVSF Dashboard - Interactive Map</h3>
+          </div>
+          <div className="flex items-center gap-4">
+            <Radio.Group
+              value={mapViewMode}
+              onChange={(e) => setMapViewMode(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+              size="small"
+            >
+              <Radio.Button value="origin">RC Data</Radio.Button>
+              <Radio.Button value="collection">Collection Centers</Radio.Button>
+              <Radio.Button value="rvsf">RVSF Locations</Radio.Button>
+            </Radio.Group>
+            {mapViewMode === 'rvsf' && (
+              <Select
+                value={rvsfFilter}
+                onChange={setRvsfFilter}
+                style={{ width: 160 }}
+                options={rvsfOptions}
+              />
+            )}
+          </div>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Showing density of where vehicles are coming from across India
+          {mapViewMode === 'origin' && 'Showing density of vehicle origins based on RC data'}
+          {mapViewMode === 'collection' && 'Showing Collection Center locations across India'}
+          {mapViewMode === 'rvsf' && 'Showing Registered Vehicle Scrapping Facility locations'}
         </p>
-        <IndiaMap />
+        <IndiaMap viewMode={mapViewMode} rvsfFilter={rvsfFilter !== 'All' ? rvsfFilter : undefined} />
       </div>
 
       <Divider />
@@ -364,6 +454,29 @@ const RVSFTab = ({ isLoading, filters: _filters }: RVSFTabProps) => {
                   </Tag>
                   <Tag color="blue" className="text-xs">{insight.category}</Tag>
                 </div>
+              </div>
+              {/* Feedback Buttons */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handleFeedback(insight.id, 'up')}
+                  className={`p-1.5 rounded-full transition-colors ${feedbackState[insight.id] === 'up'
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-gray-100 text-gray-400 hover:bg-green-50 hover:text-green-500'
+                    }`}
+                  title="Helpful"
+                >
+                  <ThumbsUp className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleFeedback(insight.id, 'down')}
+                  className={`p-1.5 rounded-full transition-colors ${feedbackState[insight.id] === 'down'
+                    ? 'bg-red-100 text-red-600'
+                    : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                    }`}
+                  title="Not helpful"
+                >
+                  <ThumbsDown className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}

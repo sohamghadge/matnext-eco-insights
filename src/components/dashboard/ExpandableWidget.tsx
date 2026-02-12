@@ -5,10 +5,11 @@ import { Maximize2, X } from 'lucide-react';
 interface ExpandableWidgetProps {
     title: string;
     children: ReactNode;
+    expandedContent?: ReactNode;
     className?: string;
 }
 
-const ExpandableWidget: React.FC<ExpandableWidgetProps> = ({ title, children, className = '' }) => {
+const ExpandableWidget: React.FC<ExpandableWidgetProps> = ({ title, children, expandedContent, className = '' }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
@@ -21,23 +22,26 @@ const ExpandableWidget: React.FC<ExpandableWidgetProps> = ({ title, children, cl
                     onClick={() => setIsExpanded(true)}
                     className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white shadow-sm"
                     icon={<Maximize2 className="w-4 h-4" />}
-                    title="Expand"
+                    title="Expand View"
                 />
                 {children}
             </div>
 
             {/* Fullscreen Modal */}
             <Modal
-                title={<span className="text-lg font-semibold">{title}</span>}
+                title={<span className="text-xl font-bold">{title}</span>}
                 open={isExpanded}
                 onCancel={() => setIsExpanded(false)}
                 footer={null}
-                width="90vw"
+                width="95vw"
                 style={{ top: 20 }}
-                styles={{ body: { height: '80vh', overflow: 'auto' } }}
-                closeIcon={<X className="w-5 h-5" />}
+                styles={{ body: { height: '85vh', overflow: 'auto', padding: '24px' } }}
+                closeIcon={<X className="w-6 h-6 hover:text-red-500 transition-colors" />}
+                centered
             >
-                <div className="h-full">{children}</div>
+                <div className="h-full">
+                    {expandedContent || children}
+                </div>
             </Modal>
         </>
     );

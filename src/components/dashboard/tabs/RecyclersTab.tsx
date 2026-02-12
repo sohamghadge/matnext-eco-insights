@@ -1,10 +1,28 @@
-import { useMemo } from 'react';
-import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space, Select } from 'antd';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet, Star } from 'lucide-react';
-import { plasticBreakdown, recyclerStats, recyclerSummary, recyclerTrendData, FilterState, getFinancialYear } from '@/data/dashboardData';
+import { useState, useMemo } from 'react';
+import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space, Select, notification, Tooltip } from 'antd';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Cell, RadialBarChart, RadialBar, PolarAngleAxis, AreaChart, Area } from 'recharts';
+import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet, Star, Package, Scale, Settings, Eye, Leaf, Info } from 'lucide-react';
+import StarRating from '../StarRating';
+import ExpandableWidget from '../ExpandableWidget';
+import EcoScoreBadge from '../EcoScoreBadge';
+import EcoScoreModal from '../EcoScoreModal';
+import { SetTargetsModal, ViewTargetsModal } from '../TargetsModal';
+import {
+  getPlasticBreakdown,
+  getRecyclerTrends,
+  recyclerStats, // Static summary base
+  recyclerSummary,
+  FilterState,
+  getFinancialYear,
+  recyclerAIInsights,
+  getRecyclerAvailableOptions,
+  getProrationFactor,
+} from '@/data/dashboardData';
 import { exportToCSV, exportToExcel, prepareRecyclerDataForExport } from '@/utils/exportUtils';
 import { getProgressColor } from '../KPICard';
+import AIInsightsWidget from '../AIInsightsWidget';
+import RankingTable from '../RankingTable';
+import { recyclerRankingKPIs, recyclerEntityScores } from '@/data/dashboardData';
 
 interface RecyclersTabProps {
   isLoading: boolean;
@@ -14,82 +32,73 @@ interface RecyclersTabProps {
 const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
   const financialYear = getFinancialYear(filters.dateFrom);
 
+  // Filter State
+  const [selectedRecycler, setSelectedRecycler] = useState('All');
+  const [selectedMaterial, setSelectedMaterial] = useState('All');
+  const [selectedGrade, setSelectedGrade] = useState('All');
+  const [selectedShape, setSelectedShape] = useState('All');
+
+  // Dynamic Options
+  const { recyclers, materials, grades, shapes } = useMemo(() =>
+    getRecyclerAvailableOptions(selectedRecycler, selectedMaterial, selectedGrade, selectedShape),
+    [selectedRecycler, selectedMaterial, selectedGrade, selectedShape]);
+
+  const recyclerOptions = ['All', ...recyclers].map(r => ({ value: r, label: r }));
+  const materialOptions = ['All', ...materials].map(m => ({ value: m, label: m }));
+  const gradeOptions = ['All', ...grades].map(g => ({ value: g, label: g }));
+  const shapeOptions = ['All', ...shapes].map(s => ({ value: s, label: s }));
+
+  // Dynamic Data Calculation
+  const plasticBreakdownData = useMemo(() => getPlasticBreakdown(filters), [filters]);
+  const recyclerTrendsData = useMemo(() =>
+    getRecyclerTrends(filters, selectedRecycler, selectedMaterial, selectedGrade, selectedShape),
+    [filters, selectedRecycler, selectedMaterial, selectedGrade, selectedShape]);
+
+  // Target State
+  const [setTargetsOpen, setSetTargetsOpen] = useState(false);
+  const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
+  const [ecoScoreModalOpen, setEcoScoreModalOpen] = useState(false);
+  const [customTargets, setCustomTargets] = useState<any[]>([]);
+
+  // Calculate dynamic target for Recycled Percentage
+  const targetRecycledPercentage = useMemo(() => {
+    const year = filters.dateFrom.getFullYear();
+    const start = year.toString().slice(-2);
+    const end = (year + 1).toString().slice(-2);
+    const fyString = `20${start} -${end} `;
+
+    const customTarget = customTargets.find(t => t.metric === 'Recycling Efficiency' && t.fy === fyString);
+    return customTarget ? customTarget.target : 80; // Default 80%
+  }, [customTargets, filters.dateFrom]);
+
+  const handleSaveTarget = (target: any) => {
+    setCustomTargets(prev => [...prev, target]);
+    notification.success({
+      message: 'Target Set Successfully',
+      description: `Target for ${target.metric} has been updated for ${target.fy}.`,
+      placement: 'topRight',
+      className: '!bg-emerald-50 !border-emerald-200',
+      icon: <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center -ml-2"><Leaf className="w-4 h-4 text-emerald-600" /></div>,
+      duration: 3,
+    });
+  };
+
   // Date-based dynamic recycled material percentage calculation
-  // Values change based on the selected date range to simulate real-time data
-  const dynamicRecyclerData = useMemo(() => {
+  const dynamicRecyclerSummary = useMemo(() => {
+    const prorationFactor = getProrationFactor(filters);
+
     const baseEfficiency = recyclerSummary.efficiency;
-    const baseRecycledWeight = recyclerSummary.recycledWeight;
-    const baseTotalSupplied = recyclerSummary.totalSupplied;
-
-    // Calculate a date factor based on the month (simulates seasonal variation)
-    const month = filters.dateFrom.getMonth();
-    const dayOfMonth = filters.dateFrom.getDate();
-    const dateFactor = 1 + ((month % 3) * 0.05) + (dayOfMonth / 100 * 0.1); // ±5-15% variation
-
-    // Apply date factor to simulate dynamic values
-    const adjustedRecycledWeight = Math.round(baseRecycledWeight * dateFactor * 10) / 10;
-    const adjustedEfficiency = Math.min(100, Math.round(baseEfficiency * dateFactor * 10) / 10);
+    const efficiencyFluctuation = 1 + (Math.random() * 0.1 - 0.05); // +/- 5%
+    const adjustedEfficiency = Math.min(100, Math.round(baseEfficiency * efficiencyFluctuation * 10) / 10);
 
     return {
-      recycledWeight: adjustedRecycledWeight,
-      totalSupplied: baseTotalSupplied,
+      recycledWeight: Math.round(recyclerSummary.recycledWeight * prorationFactor * 100) / 100,
+      totalSupplied: Math.round(recyclerSummary.totalSupplied * prorationFactor * 100) / 100,
       efficiency: adjustedEfficiency,
     };
-  }, [filters.dateFrom]);
+  }, [filters]);
 
-  const pieData = plasticBreakdown.map(item => ({
-    name: item.type,
-    value: item.quantity,
-    percentage: item.percentage,
-    color: item.color,
-  }));
-
-  // Use dynamic efficiency for recycle ratio
-  const recycleRatio = dynamicRecyclerData.efficiency;
-
-  // Plastic Breakdown Table Columns with additional columns
-  const plasticColumns = [
-    {
-      title: 'Plastic Type',
-      dataIndex: 'type',
-      key: 'type',
-      render: (text: string, record: typeof plasticBreakdown[0]) => (
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: record.color }} />
-          <span className="font-medium">{text}</span>
-        </div>
-      ),
-    },
-    {
-      title: 'Quantity (MT)',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      render: (value: number) => <span className="font-semibold">{value.toLocaleString()}</span>,
-    },
-    {
-      title: 'Percentage',
-      dataIndex: 'percentage',
-      key: 'percentage',
-      render: (value: number) => (
-        <Tag color="processing">{value}%</Tag>
-      ),
-    },
-    {
-      title: 'Target Market',
-      dataIndex: 'targetMarket',
-      key: 'targetMarket',
-    },
-    {
-      title: 'Financial Year',
-      dataIndex: 'financialYear',
-      key: 'financialYear',
-    },
-    {
-      title: 'Plant',
-      dataIndex: 'plant',
-      key: 'plant',
-    },
-  ];
+  const recycleRatio = dynamicRecyclerSummary.efficiency;
 
   // Recycler Stats Table Columns
   const statsColumns = [
@@ -128,14 +137,14 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
 
   // Export handlers
   const handleExportCSV = () => {
-    const data = prepareRecyclerDataForExport(plasticBreakdown);
+    const data = prepareRecyclerDataForExport(plasticBreakdownData);
     exportToCSV(data, 'Recyclers_Plastic_Breakdown', filters);
   };
 
   const handleExportExcel = () => {
     exportToExcel(
       [
-        { name: 'Plastic Breakdown', data: prepareRecyclerDataForExport(plasticBreakdown) },
+        { name: 'Plastic Breakdown', data: prepareRecyclerDataForExport(plasticBreakdownData) },
         {
           name: 'Recycler Statistics', data: recyclerStats.map(s => ({
             'Metric': s.metric,
@@ -147,11 +156,12 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
           }))
         },
         {
-          name: 'Monthly Trend', data: recyclerTrendData.map(t => ({
+          name: 'Monthly Trend', data: recyclerTrendsData.map(t => ({
             'Month': t.month,
-            'Input (MT)': t.input,
-            'Output (MT)': t.output,
-            'Efficiency %': ((t.output / t.input) * 100).toFixed(2) + '%',
+            'Plastic (MT)': t.plastic,
+            'Metal (MT)': t.metal,
+            'Battery (MT)': t.battery,
+            'Total (MT)': t.plastic + t.metal + t.battery,
           }))
         },
       ],
@@ -183,14 +193,19 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
               style={{ width: 220 }}
               allowClear
               options={[
-                { value: 'Recycler A', label: 'Global Recyclers Ltd' },
-                { value: 'Recycler B', label: 'EcoPlastic Solutions' },
-                { value: 'Recycler C', label: 'Green Earth Polymers' },
+                { value: 'Peeco Polytech, Sonipat', label: 'Peeco Polytech, Sonipat' },
+                { value: 'Peeco Polytech, Panipat', label: 'Peeco Polytech, Panipat' },
+                { value: 'Kingfa Science and Technology Ltd.', label: 'Kingfa Science' },
+                { value: 'Mitsui Prime ACI', label: 'Mitsui Prime ACI' },
+                { value: 'Vardhaman Special Steels Limited', label: 'Vardhaman Special Steels' },
+                { value: 'Sunflag Steel India', label: 'Sunflag Steel' },
               ]}
             />
           </div>
         </div>
         <Space>
+          <Button icon={<Settings className="w-4 h-4" />} onClick={() => setSetTargetsOpen(true)}>Set Targets</Button>
+          <Button icon={<Eye className="w-4 h-4" />} onClick={() => setViewTargetsOpen(true)}>View Targets</Button>
           <Button
             icon={<Download className="w-4 h-4" />}
             onClick={handleExportCSV}
@@ -206,225 +221,431 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
             Export XLSX
           </Button>
         </Space>
+
       </div>
 
-      {/* Summary Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-card rounded-xl p-5 shadow-card text-center">
-          <Statistic
-            title={<span className="text-muted-foreground">Recycled Material Weight</span>}
-            value={recyclerSummary.recycledWeight}
-            suffix="MT"
-            valueStyle={{ color: 'hsl(var(--accent))', fontWeight: 700, fontSize: '2rem' }}
-          />
-        </div>
-        <div className="bg-card rounded-xl p-5 shadow-card text-center">
-          <Statistic
-            title={<span className="text-muted-foreground">Total Material Supplied</span>}
-            value={recyclerSummary.totalSupplied}
-            suffix="MT"
-            valueStyle={{ color: 'hsl(var(--foreground))', fontWeight: 700, fontSize: '2rem' }}
-          />
-        </div>
-        <div className="bg-card rounded-xl p-5 shadow-card text-center">
-          <Statistic
-            title={<span className="text-muted-foreground">Yield Percentage</span>}
-            value={recyclerSummary.efficiency}
-            suffix="%"
-            valueStyle={{ color: 'hsl(var(--accent))', fontWeight: 700, fontSize: '2rem' }}
-            prefix={<TrendingUp className="w-5 h-5 mr-1 inline" />}
-          />
-        </div>
-      </div>
-
-      {/* Plastic Breakdown - Chart + Table */}
-      <div className="bg-card rounded-xl p-6 shadow-card">
-        <h3 className="text-lg font-semibold mb-6">Plastic Material Breakdown</h3>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pie Chart */}
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={3}
-                  dataKey="value"
-                  label={({ name, value }) => `${value} MT`}
-                  labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: number, name: string) => [`${value} MT (${pieData.find(p => p.name === name)?.percentage}%)`, name]}
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  formatter={(value) => (
-                    <span className="text-sm text-foreground">{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+      {/* Facility EcoScore Banner */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white rounded-full shadow-sm">
+            <Leaf className="w-6 h-6 text-amber-600" />
           </div>
-
-          {/* Table */}
           <div>
-            <Table
-              columns={plasticColumns}
-              dataSource={plasticBreakdown.map((item, i) => ({ ...item, key: i }))}
-              pagination={false}
-              size="middle"
-              scroll={{ x: 500 }}
-            />
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-amber-900">Facility Efficiency Score</h3>
+              <Button
+                type="link"
+                size="small"
+                className="text-amber-600 font-semibold p-0 flex items-center gap-1 hover:text-amber-800"
+                onClick={() => setEcoScoreModalOpen(true)}
+              >
+                View Details <Settings className="w-3 h-3" />
+              </Button>
+            </div>
+            <p className="text-sm text-amber-700">Operational rating based on energy efficiency, purity of output, and safety compliance.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 px-6 border-l border-amber-200">
+          <div className="text-right">
+            <div className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Current Score</div>
+            <div className="text-3xl font-bold text-amber-800">{recyclerSummary.facilityEcoScore}</div>
+          </div>
+          <EcoScoreBadge score={recyclerSummary.facilityEcoScore} size="large" />
+        </div>
+      </div>
 
-            {/* Summary below table */}
-            <div className="mt-4 p-4 bg-secondary/30 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total Plastic</span>
-                <span className="font-bold text-lg">
-                  {plasticBreakdown.reduce((sum, item) => sum + item.quantity, 0)} MT
-                </span>
+      {/* EcoScore Modal */}
+      <EcoScoreModal
+        isOpen={ecoScoreModalOpen}
+        onClose={() => setEcoScoreModalOpen(false)}
+        score={recyclerSummary.facilityEcoScore}
+        type="RECYCLER"
+      />
+
+      {/* Summary Stats Cards - Modern EU Style */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Card 1: Recycled Material Weight */}
+        <div className="bg-card rounded-xl p-5 shadow-card border-l-4 border-blue-500 relative overflow-hidden group hover:shadow-lg transition-all">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Recycled Material Weight</h3>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:scale-110 transition-transform">
+              <Scale className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-3xl font-bold text-foreground">{dynamicRecyclerSummary.recycledWeight.toLocaleString()}</span>
+            <span className="text-sm font-medium text-muted-foreground ml-1">MT</span>
+          </div>
+          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-green-600 bg-green-100 dark:bg-green-900/20 w-fit px-2 py-1 rounded-full">
+            <TrendingUp className="w-3 h-3" />
+            <span>+12.4% YoY</span>
+          </div>
+        </div>
+
+        {/* Card 2: Total Material Supplied */}
+        <div className="bg-card rounded-xl p-5 shadow-card border-l-4 border-emerald-500 relative overflow-hidden group hover:shadow-lg transition-all">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Material Supplied</h3>
+            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg group-hover:scale-110 transition-transform">
+              <Package className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-3xl font-bold text-foreground">{dynamicRecyclerSummary.totalSupplied.toLocaleString()}</span>
+            <span className="text-sm font-medium text-muted-foreground ml-1">MT</span>
+          </div>
+          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-100 dark:bg-emerald-900/20 w-fit px-2 py-1 rounded-full">
+            <TrendingUp className="w-3 h-3" />
+            <span>On track for targets</span>
+          </div>
+        </div>
+
+        {/* Card 3: Recycled Percentage */}
+        <div className="relative group">
+          <div className="bg-card rounded-xl p-5 shadow-card border-l-4 border-amber-500 relative overflow-hidden group-hover:shadow-lg transition-all h-full">
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Recycled Percentage</h3>
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                <Recycle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-3xl font-bold text-foreground">{recycleRatio}</span>
+              <span className="text-sm font-medium text-muted-foreground ml-1">%</span>
+            </div>
+            <div className="mt-3 flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-100 dark:bg-amber-900/20 w-fit px-2 py-1 rounded-full mb-3">
+              <Star className="w-3 h-3 fill-amber-600" />
+              <span>Target: {targetRecycledPercentage}%</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
+              <span className="text-xs text-muted-foreground font-medium">Efficiency Rating:</span>
+              <StarRating value={recycleRatio} max={5} size={14} isPercentage={true} />
             </div>
           </div>
         </div>
       </div>
 
       {/* Input vs Output - Visual Flow + Stats Table */}
-      <div className="bg-card rounded-xl p-6 shadow-card">
-        <h3 className="text-lg font-semibold mb-6">Total Input vs Recycled Output</h3>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Visual Flow */}
-          <div className="flex flex-col items-center justify-center gap-6 py-4">
-            <div className="flex items-center justify-center gap-6">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mb-2 shadow-lg">
-                  <span className="text-2xl font-bold">{recyclerSummary.totalSupplied}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">Input (MT)</p>
+      <ExpandableWidget
+        title="Total Input vs Recycled Output"
+        expandedContent={
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* AI Analysis */}
+            <div className="md:col-span-2 bg-purple-50 border border-purple-200 rounded-lg p-4 flex gap-3 mb-2">
+              <div className="bg-purple-100 p-2 rounded-full h-fit">
+                <Leaf className="w-5 h-5 text-purple-600" />
               </div>
-
-              <div className="flex items-center gap-2">
-                <ArrowRight className="w-8 h-8 text-accent" />
-                <Recycle className="w-12 h-12 text-accent animate-spin" style={{ animationDuration: '8s' }} />
-                <ArrowRight className="w-8 h-8 text-accent" />
-              </div>
-
-              <div className="text-center">
-                <div className="w-24 h-24 bg-accent/20 rounded-full flex items-center justify-center mb-2 shadow-lg">
-                  <span className="text-2xl font-bold text-accent">{dynamicRecyclerData.recycledWeight}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">Output (MT)</p>
+              <div>
+                <h4 className="font-semibold text-purple-900 text-sm">AI Analysis</h4>
+                <p className="text-sm text-purple-800 mt-1">
+                  Recycling efficiency is matching targets. Output volume is stable relative to input variability.
+                </p>
               </div>
             </div>
-
-            {/* Efficiency Bar with color coding */}
-            <div className="w-full max-w-md p-4 bg-secondary/30 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Yield Percentage</span>
-                <span
-                  className="text-lg font-bold"
-                  style={{ color: getProgressColor(recycleRatio) }}
-                >
-                  {recycleRatio}%
-                </span>
-              </div>
-              <div className="relative pt-4">
-                {/* Target Marker */}
-                <div
-                  className="absolute top-0 flex flex-col items-center"
-                  style={{ left: '80%', transform: 'translateX(-50%)' }}
-                >
-                  <span className="text-[10px] font-bold text-gray-500 mb-0.5">Target</span>
-                  <div className="h-3 w-0.5 bg-black"></div>
+            <div className="flex flex-col items-center justify-center gap-8 py-8 bg-secondary/10 rounded-xl">
+              <div className="flex items-center justify-center gap-6 scale-110">
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mb-2 shadow-lg">
+                    <span className="text-2xl font-bold">{dynamicRecyclerSummary.totalSupplied}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Input (MT)</p>
                 </div>
 
-                <Progress
-                  percent={recycleRatio}
-                  strokeColor={getProgressColor(recycleRatio)}
-                  trailColor="hsl(var(--muted))"
-                  showInfo={false}
-                  strokeWidth={12}
-                />
-              </div>
+                <div className="flex items-center gap-2">
+                  <ArrowRight className="w-8 h-8 text-accent" />
+                  <Recycle className="w-12 h-12 text-accent animate-spin" style={{ animationDuration: '8s' }} />
+                  <ArrowRight className="w-8 h-8 text-accent" />
+                </div>
 
-              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                <span>0%</span>
-                <span className="font-semibold text-black">Target: 80%</span>
-                <span>100%</span>
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-accent/20 rounded-full flex items-center justify-center mb-2 shadow-lg">
+                    <span className="text-2xl font-bold text-accent">{dynamicRecyclerSummary.recycledWeight}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Output (MT)</p>
+                </div>
               </div>
-              {/* Star rating */}
-              <div className="flex items-center justify-center gap-1 mt-3">
-                {[...Array(5)].map((_, i) => {
-                  const stars = recycleRatio >= 80 ? 5 : recycleRatio >= 60 ? 4 : recycleRatio >= 40 ? 3 : recycleRatio >= 20 ? 2 : 1;
-                  const color = stars >= 4 ? '#16a34a' : stars >= 3 ? '#eab308' : '#dc2626';
-                  return (
-                    <Star
-                      key={i}
-                      className="w-4 h-4"
-                      fill={i < stars ? color : 'transparent'}
-                      stroke={i < stars ? color : '#d1d5db'}
-                    />
-                  );
-                })}
+              <div className="w-full max-w-md p-6 bg-secondary/30 rounded-xl">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-semibold">Overall Efficiency</span>
+                  <span className="text-2xl font-bold text-emerald-600">{recycleRatio}%</span>
+                </div>
+                <Progress percent={recycleRatio} strokeColor={getProgressColor(recycleRatio)} trailColor="hsl(var(--muted))" />
+                <div className="mt-4 flex justify-between text-sm">
+                  <span>Target: {targetRecycledPercentage}%</span>
+                  <StarRating value={recycleRatio} max={5} size={18} isPercentage={true} />
+                </div>
               </div>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Detailed Recycler Statistics</h4>
+              <Table
+                columns={statsColumns}
+                dataSource={recyclerStats.map((item, i) => ({ ...item, key: i }))}
+                pagination={false}
+                size="middle"
+              />
             </div>
           </div>
+        }
+      >
+        <div className="bg-card rounded-xl p-6 shadow-card">
+          <h3 className="text-lg font-semibold mb-6">Total Input vs Recycled Output</h3>
+          <div className="grid grid-cols-1 gap-6">
+            {/* Visual Flow */}
+            <div className="flex flex-col items-center justify-center gap-6 py-4">
+              <div className="flex items-center justify-center gap-6">
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mb-2 shadow-lg">
+                    <span className="text-2xl font-bold">{dynamicRecyclerSummary.totalSupplied}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Input (MT)</p>
+                </div>
 
-          {/* Stats Table */}
-          <div>
-            <Table
-              columns={statsColumns}
-              dataSource={recyclerStats.map((item, i) => ({ ...item, key: i }))}
-              pagination={false}
-              size="middle"
-              scroll={{ x: 500 }}
-            />
+                <div className="flex items-center gap-2">
+                  <ArrowRight className="w-8 h-8 text-accent" />
+                  <Recycle className="w-12 h-12 text-accent animate-spin" style={{ animationDuration: '8s' }} />
+                  <ArrowRight className="w-8 h-8 text-accent" />
+                </div>
+
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-accent/20 rounded-full flex items-center justify-center mb-2 shadow-lg">
+                    <span className="text-2xl font-bold text-accent">{dynamicRecyclerSummary.recycledWeight}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Output (MT)</p>
+                </div>
+              </div>
+
+              {/* Efficiency Bar with color coding */}
+              <div className="w-full max-w-md p-4 bg-secondary/30 rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Recycled Percentage</span>
+                  <span
+                    className="text-lg font-bold"
+                    style={{ color: getProgressColor(recycleRatio) }}
+                  >
+                    {recycleRatio}%
+                  </span>
+                </div>
+
+                <div className="relative pt-4">
+                  {/* Target Marker */}
+                  <div
+                    className="absolute top-0 flex flex-col items-center"
+                    style={{ left: `${Math.min(targetRecycledPercentage, 100)}% `, transform: 'translateX(-50%)' }}
+                  >
+                    <span className="text-[10px] font-bold text-gray-500 mb-0.5">Target</span>
+                    <div className="h-3 w-0.5 bg-black"></div>
+                  </div>
+
+                  <Progress
+                    percent={recycleRatio}
+                    strokeColor={getProgressColor(recycleRatio)}
+                    trailColor="hsl(var(--muted))"
+                    showInfo={false}
+                    strokeWidth={12}
+                  />
+                </div>
+
+                <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                  <span>0%</span>
+                  <span className="font-semibold text-black">Target: {targetRecycledPercentage}%</span>
+                  <span>100%</span>
+                </div>
+
+                {/* Star rating */}
+                <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-dashed border-border">
+                  <span className="text-xs font-semibold text-muted-foreground">Efficiency Rating:</span>
+                  <StarRating value={recycleRatio} max={5} size={16} isPercentage={true} />
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Table */}
+            <div>
+              <Table
+                columns={statsColumns}
+                dataSource={recyclerStats.map((item, i) => ({ ...item, key: i }))}
+                pagination={false}
+                size="middle"
+                scroll={{ x: 500 }}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </ExpandableWidget>
 
       <Divider />
 
       {/* Monthly Trend */}
-      <div className="bg-card rounded-xl p-6 shadow-card">
-        <h3 className="text-lg font-semibold mb-4">Monthly Input vs Output Trend (FY {financialYear})</h3>
-        <div className="h-[280px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={recyclerTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-                formatter={(value: number, name: string) => [`${value.toLocaleString()} MT`, name]}
+      <ExpandableWidget
+        title="Monthly Input vs Output Trend"
+        expandedContent={
+          <div className="flex flex-col gap-6">
+            {/* AI Analysis */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex gap-3">
+              <div className="bg-purple-100 p-2 rounded-full h-fit">
+                <Leaf className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-purple-900 text-sm">AI Analysis</h4>
+                <p className="text-sm text-purple-800 mt-1">
+                  Upward trend in recycled output despite fluctuating input levels suggests improved process efficiency.
+                </p>
+              </div>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={recyclerTrendsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorInput" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#64748b" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorOutput" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                  <RechartsTooltip
+                    cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                    formatter={(value: number, name: string) => [`${value.toLocaleString()} MT`, name]}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="plastic" stackId="1" name="Plastic (MT)" stroke="#3b82f6" fillOpacity={1} fill="url(#colorInput)" />
+                  <Area type="monotone" dataKey="metal" stackId="1" name="Metal (MT)" stroke="#64748b" fillOpacity={1} fill="url(#colorOutput)" />
+                  <Area type="monotone" dataKey="battery" stackId="1" name="Battery (MT)" stroke="#f59e0b" fillOpacity={1} fill="#fcd34d" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="bg-card rounded-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Detailed Trend Data</h3>
+              </div>
+              <Table
+                columns={[
+                  { title: 'Month', dataIndex: 'month', key: 'month' },
+                  { title: 'Plastic (MT)', dataIndex: 'plastic', key: 'plastic' },
+                  { title: 'Metal (MT)', dataIndex: 'metal', key: 'metal' },
+                  { title: 'Battery (MT)', dataIndex: 'battery', key: 'battery' },
+                  { title: 'Total (MT)', key: 'total', render: (_, r: any) => (r.plastic + r.metal + r.battery).toLocaleString() }
+                ]}
+                dataSource={recyclerTrendsData.map((item, i) => ({ ...item, key: i }))}
+                pagination={false}
+                size="middle"
               />
-              <Legend />
-              <Line type="monotone" dataKey="input" name="Total Input (MT)" stroke="#64748b" strokeWidth={2} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="output" name="Recycled Output (MT)" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
+            </div>
+          </div>
+        }
+      >
+        <div className="bg-card rounded-xl p-6 shadow-card">
+          <h3 className="text-lg font-semibold mb-4">Monthly Input vs Output Trend (FY {financialYear})</h3>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={recyclerTrendsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="colorInput" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#64748b" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorOutput" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                <RechartsTooltip
+                  cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}
+                  formatter={(value: number, name: string) => [`${value.toLocaleString()} MT`, name]}
+                />
+                <Legend />
+                <Area type="monotone" dataKey="plastic" stackId="1" name="Plastic (MT)" stroke="#3b82f6" fillOpacity={1} fill="url(#colorInput)" />
+                <Area type="monotone" dataKey="metal" stackId="1" name="Metal (MT)" stroke="#64748b" fillOpacity={1} fill="url(#colorOutput)" />
+                <Area type="monotone" dataKey="battery" stackId="1" name="Battery (MT)" stroke="#f59e0b" fillOpacity={1} fill="#fcd34d" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
-    </div>
+      </ExpandableWidget>
+
+      <Divider />
+
+      <ExpandableWidget
+        title="Plastic Waste Breakdown"
+        expandedContent={
+          <Table
+            columns={[
+              { title: 'Plastic Type', dataIndex: 'type', key: 'type', render: (text, record: any) => <span style={{ color: record.color }} className="font-semibold">{text}</span> },
+              { title: 'Quantity (MT)', dataIndex: 'quantity', key: 'quantity', sorter: (a: any, b: any) => a.quantity - b.quantity },
+              { title: 'Percentage', dataIndex: 'percentage', key: 'percentage', render: (val) => `${val}%` },
+              { title: 'Processing EcoScore', dataIndex: 'ecoScore', key: 'ecoScore', render: (score) => <EcoScoreBadge score={score} size="small" />, sorter: (a: any, b: any) => a.ecoScore - b.ecoScore },
+              { title: 'Target Market', dataIndex: 'targetMarket', key: 'targetMarket' },
+              { title: 'Plant', dataIndex: 'plant', key: 'plant' },
+            ]}
+            dataSource={plasticBreakdownData.map((item, i) => ({ ...item, key: i }))}
+            pagination={{ pageSize: 10 }}
+            size="middle"
+          />
+        }
+      >
+        <div className="bg-card rounded-xl p-6 shadow-card">
+          <h3 className="text-lg font-semibold mb-4">Plastic Waste Processing Breakdown</h3>
+          <Table
+            columns={[
+              { title: 'Plastic Type', dataIndex: 'type', key: 'type', render: (text, record: any) => <span style={{ color: record.color }} className="font-semibold">{text}</span> },
+              { title: 'Quantity (MT)', dataIndex: 'quantity', key: 'quantity' },
+              { title: 'EcoScore', dataIndex: 'ecoScore', key: 'ecoScore', render: (score) => <EcoScoreBadge score={score} size="small" /> },
+            ]}
+            dataSource={plasticBreakdownData.map((item, i) => ({ ...item, key: i }))}
+            pagination={false}
+            size="small"
+          />
+        </div>
+      </ExpandableWidget>
+
+      <Divider />
+
+      {/* AI Insights Section */}
+      <AIInsightsWidget insights={recyclerAIInsights} title="Recycler Efficiency Insights" />
+
+      {/* Target Modals */}
+      <SetTargetsModal
+        open={setTargetsOpen}
+        onClose={() => setSetTargetsOpen(false)}
+        onSave={handleSaveTarget}
+        targetType="recycler"
+      />
+      <ViewTargetsModal
+        open={viewTargetsOpen}
+        onClose={() => setViewTargetsOpen(false)}
+        customTargets={customTargets}
+        targetType="recycler"
+      />
+
+      {/* Recycler Ranking Table */}
+      <Divider />
+      <RankingTable
+        title="Weighted Recycler Evaluation Matrix"
+        kpis={recyclerRankingKPIs}
+        entityScores={recyclerEntityScores}
+      />
+    </div >
   );
 };
 

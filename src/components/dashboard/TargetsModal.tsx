@@ -60,21 +60,108 @@ const eprTargetData: TargetEntry[] = [
   { key: '10', eprTargetYear: '2034-35', referenceYear: '2013-14', carsSold: 1120702, scopeOfEPR: 112070.2, scopeOfEPRWeight: 112070.2 },
 ];
 
+// Target Types
+export type TargetType = 'material' | 'recycler' | 'supplier' | 'rvsf';
+
 interface SetTargetsModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (target: { material: string; fy: string; unit: string; target: number }) => void;
+  onSave: (target: any) => void;
+  targetType?: TargetType;
 }
 
-export const SetTargetsModal = ({ open, onClose, onSave }: SetTargetsModalProps) => {
+export const SetTargetsModal = ({ open, onClose, onSave, targetType = 'material' }: SetTargetsModalProps) => {
   const [form] = Form.useForm();
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
-      onSave(values);
+      onSave({ ...values, type: targetType });
       form.resetFields();
       onClose();
     });
+  };
+
+  const getModalTitle = () => {
+    switch (targetType) {
+      case 'recycler': return 'Set Recycler Targets';
+      case 'supplier': return 'Set Supplier Targets';
+      case 'rvsf': return 'Set RVSF Targets';
+      default: return 'Set Material Targets';
+    }
+  };
+
+  const renderFormFields = () => {
+    switch (targetType) {
+      case 'recycler':
+        return (
+          <>
+            <Form.Item name="metric" label="Select Metric" rules={[{ required: true }]}>
+              <Select placeholder="Select metric..." options={[
+                { value: 'Recycling Efficiency', label: 'Recycling Efficiency (%)' },
+                { value: 'Output', label: 'Recycled Output (MT)' }
+              ]} />
+            </Form.Item>
+            <Form.Item name="fy" label="Select FY" rules={[{ required: true }]}>
+              <Select placeholder="Select FY..." options={fyOptions.map(fy => ({ value: fy, label: `FY ${fy}` }))} />
+            </Form.Item>
+            <Form.Item name="target" label="Target Value" rules={[{ required: true }]}>
+              <InputNumber style={{ width: '100%' }} placeholder="Enter target..." />
+            </Form.Item>
+          </>
+        );
+      case 'supplier':
+        return (
+          <>
+            <Form.Item name="metric" label="Select Metric" rules={[{ required: true }]}>
+              <Select placeholder="Select metric..." options={[
+                { value: 'Green Score', label: 'Green Score (0-5)' },
+                { value: 'Recycled Content', label: 'Recycled Content (%)' }
+              ]} />
+            </Form.Item>
+            <Form.Item name="fy" label="Select FY" rules={[{ required: true }]}>
+              <Select placeholder="Select FY..." options={fyOptions.map(fy => ({ value: fy, label: `FY ${fy}` }))} />
+            </Form.Item>
+            <Form.Item name="target" label="Target Value" rules={[{ required: true }]}>
+              <InputNumber style={{ width: '100%' }} placeholder="Enter target..." />
+            </Form.Item>
+          </>
+        );
+      case 'rvsf':
+        return (
+          <>
+            <Form.Item name="metric" label="Select Metric" rules={[{ required: true }]}>
+              <Select placeholder="Select metric..." options={[
+                { value: 'Vehicles Scrapped', label: 'Vehicles Scrapped (Units)' },
+                { value: 'Recovery Rate', label: 'Recovery Rate (%)' }
+              ]} />
+            </Form.Item>
+            <Form.Item name="fy" label="Select FY" rules={[{ required: true }]}>
+              <Select placeholder="Select FY..." options={fyOptions.map(fy => ({ value: fy, label: `FY ${fy}` }))} />
+            </Form.Item>
+            <Form.Item name="target" label="Target Value" rules={[{ required: true }]}>
+              <InputNumber style={{ width: '100%' }} placeholder="Enter target..." />
+            </Form.Item>
+          </>
+        );
+      default:
+        // Original Material Form
+        return (
+          <>
+            <Form.Item name="material" label="Select Material" rules={[{ required: true }]}>
+              <Select placeholder="Select material..." options={targetMaterials.map(m => ({ value: m, label: m }))} />
+            </Form.Item>
+            <Form.Item name="fy" label="Select FY" rules={[{ required: true }]}>
+              <Select placeholder="Select FY..." options={fyOptions.map(fy => ({ value: fy, label: `FY ${fy}` }))} />
+            </Form.Item>
+            <Form.Item name="unit" label="Select Unit" rules={[{ required: true }]}>
+              <Select placeholder="Select unit..." options={unitOptions.map(u => ({ value: u, label: u }))} />
+            </Form.Item>
+            <Form.Item name="target" label="Target" rules={[{ required: true }]}>
+              <InputNumber style={{ width: '100%' }} placeholder="Enter target value..." />
+            </Form.Item>
+          </>
+        );
+    }
   };
 
   return (
@@ -82,7 +169,7 @@ export const SetTargetsModal = ({ open, onClose, onSave }: SetTargetsModalProps)
       title={
         <div className="flex items-center gap-2">
           <Plus className="w-5 h-5 text-primary" />
-          <span>Set Targets</span>
+          <span>{getModalTitle()}</span>
         </div>
       }
       open={open}
@@ -92,55 +179,8 @@ export const SetTargetsModal = ({ open, onClose, onSave }: SetTargetsModalProps)
       okButtonProps={{ className: 'bg-[#5a7a32] hover:bg-[#4b6a28]' }}
       width={500}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        className="mt-4"
-      >
-        <Form.Item
-          name="material"
-          label="Select Material"
-          rules={[{ required: true, message: 'Please select a material' }]}
-        >
-          <Select
-            placeholder="Select material..."
-            options={targetMaterials.map(m => ({ value: m, label: m }))}
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="fy"
-          label="Select FY"
-          rules={[{ required: true, message: 'Please select a financial year' }]}
-        >
-          <Select
-            placeholder="Select financial year..."
-            options={fyOptions.map(fy => ({ value: fy, label: `FY ${fy}` }))}
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="unit"
-          label="Select Unit"
-          rules={[{ required: true, message: 'Please select a unit' }]}
-        >
-          <Select
-            placeholder="Select unit..."
-            options={unitOptions.map(u => ({ value: u, label: u }))}
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="target"
-          label="Target"
-          rules={[{ required: true, message: 'Please enter a target value' }]}
-        >
-          <InputNumber
-            placeholder="Enter target value..."
-            min={0}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
+      <Form form={form} layout="vertical" className="mt-4">
+        {renderFormFields()}
       </Form>
     </Modal>
   );
@@ -149,72 +189,29 @@ export const SetTargetsModal = ({ open, onClose, onSave }: SetTargetsModalProps)
 interface ViewTargetsModalProps {
   open: boolean;
   onClose: () => void;
-  customTargets?: { material: string; fy: string; unit: string; target: number }[];
+  customTargets?: any[];
+  targetType?: TargetType;
 }
 
-export const ViewTargetsModal = ({ open, onClose, customTargets = [] }: ViewTargetsModalProps) => {
-  const columns = [
-    {
-      title: 'EPR Target Year',
-      dataIndex: 'eprTargetYear',
-      key: 'eprTargetYear',
-      render: (text: string) => <span className="font-medium">{text}</span>,
-    },
-    {
-      title: 'Reference Year',
-      dataIndex: 'referenceYear',
-      key: 'referenceYear',
-    },
-    {
-      title: 'Cars Sold',
-      dataIndex: 'carsSold',
-      key: 'carsSold',
-      render: (value: number) => value.toLocaleString('en-IN'),
-    },
-    {
-      title: 'Scope of EPR (10%)',
-      dataIndex: 'scopeOfEPR',
-      key: 'scopeOfEPR',
-      render: (value: number) => value.toLocaleString('en-IN', { minimumFractionDigits: 1 }),
-    },
-    {
-      title: 'Scope of EPR Weight (tons)',
-      dataIndex: 'scopeOfEPRWeight',
-      key: 'scopeOfEPRWeight',
-      render: (value: number) => value.toLocaleString('en-IN', { minimumFractionDigits: 1 }),
-    },
+export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType = 'material' }: ViewTargetsModalProps) => {
+  const materialColumns = [
+    { title: 'Material', dataIndex: 'material', key: 'material', render: (text: string) => <Tag color="green">{text}</Tag> },
+    { title: 'Financial Year', dataIndex: 'fy', key: 'fy' },
+    { title: 'Target', dataIndex: 'target', key: 'target', render: (value: number) => value?.toLocaleString() },
+    { title: 'Unit', dataIndex: 'unit', key: 'unit' },
   ];
 
-  const customTargetColumns = [
-    {
-      title: 'Material',
-      dataIndex: 'material',
-      key: 'material',
-      render: (text: string) => <Tag color="green">{text}</Tag>,
-    },
-    {
-      title: 'Financial Year',
-      dataIndex: 'fy',
-      key: 'fy',
-    },
-    {
-      title: 'Target',
-      dataIndex: 'target',
-      key: 'target',
-      render: (value: number) => value.toLocaleString('en-IN'),
-    },
-    {
-      title: 'Unit',
-      dataIndex: 'unit',
-      key: 'unit',
-    },
+  const otherColumns = [
+    { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (text: string) => <Tag color="blue">{text}</Tag> },
+    { title: 'Financial Year', dataIndex: 'fy', key: 'fy' },
+    { title: 'Target Value', dataIndex: 'target', key: 'target', render: (value: number) => value?.toLocaleString() },
   ];
 
   return (
     <Modal
       title={
         <div className="flex items-center gap-2 bg-[#5a7a32] text-white px-4 py-2 -mx-6 -mt-5 rounded-t-lg">
-          <span className="text-lg font-semibold">Targets</span>
+          <span className="text-lg font-semibold">Targets Overview</span>
         </div>
       }
       open={open}
@@ -224,25 +221,34 @@ export const ViewTargetsModal = ({ open, onClose, customTargets = [] }: ViewTarg
       className="targets-modal"
     >
       <div className="mt-4">
-        <Table
-          dataSource={eprTargetData}
-          columns={columns}
-          pagination={false}
-          size="middle"
-          className="targets-table"
-          scroll={{ y: 400 }}
-        />
+        {targetType === 'material' && (
+          <Table
+            dataSource={eprTargetData}
+            columns={[
+              { title: 'EPR Target Year', dataIndex: 'eprTargetYear', key: 'eprTargetYear' },
+              { title: 'Reference Year', dataIndex: 'referenceYear', key: 'referenceYear' },
+              { title: 'Cars Sold', dataIndex: 'carsSold', key: 'carsSold' },
+              { title: 'Scope of EPR', dataIndex: 'scopeOfEPR', key: 'scopeOfEPR' },
+            ]}
+            pagination={false}
+            size="middle"
+            scroll={{ y: 300 }}
+            title={() => <b>EPR Regulatory Targets</b>}
+          />
+        )}
 
-        {customTargets.length > 0 && (
+        {customTargets.length > 0 ? (
           <div className="mt-6">
-            <h4 className="text-sm font-semibold mb-3 text-primary">Custom Material Targets</h4>
+            <h4 className="text-sm font-semibold mb-3 text-primary">Custom Targets</h4>
             <Table
               dataSource={customTargets.map((t, i) => ({ ...t, key: i }))}
-              columns={customTargetColumns}
+              columns={targetType === 'material' ? materialColumns : otherColumns}
               pagination={false}
               size="small"
             />
           </div>
+        ) : (
+          <div className="mt-6 text-center text-muted-foreground">No custom targets set yet.</div>
         )}
       </div>
     </Modal>

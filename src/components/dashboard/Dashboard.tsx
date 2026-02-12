@@ -102,7 +102,7 @@ const Dashboard = () => {
     <ConfigProvider theme={antdTheme}>
       <div className="bg-background">
         {/* Dashboard Header with filters and targets */}
-        <DashboardHeader filters={filters} onFilterChange={handleFilterChange} />
+        <DashboardHeader filters={filters} onFilterChange={handleFilterChange} activeTab={activeTab} />
 
         <div className="px-6 py-6">
           {/* Tabs */}

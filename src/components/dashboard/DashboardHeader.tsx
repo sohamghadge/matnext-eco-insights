@@ -8,9 +8,10 @@ import dayjs, { Dayjs } from 'dayjs';
 interface DashboardHeaderProps {
   filters: FilterState;
   onFilterChange: (key: keyof FilterState, value: string | string[] | Date) => void;
+  activeTab?: string;
 }
 
-const DashboardHeader = ({ filters, onFilterChange }: DashboardHeaderProps) => {
+const DashboardHeader = ({ filters, onFilterChange, activeTab }: DashboardHeaderProps) => {
   const [setTargetsOpen, setSetTargetsOpen] = useState(false);
   const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
   const [customTargets, setCustomTargets] = useState<{ material: string; fy: string; unit: string; target: number }[]>([]);
@@ -139,22 +140,26 @@ const DashboardHeader = ({ filters, onFilterChange }: DashboardHeaderProps) => {
               />
             </div>
 
-            <Button
-              type="primary"
-              icon={<Settings className="w-4 h-4" />}
-              className="bg-[#4b6043] hover:bg-[#5a7350]"
-              onClick={() => setSetTargetsOpen(true)}
-            >
-              Set Targets
-            </Button>
+            {activeTab === 'msil' && (
+              <>
+                <Button
+                  type="primary"
+                  icon={<Settings className="w-4 h-4" />}
+                  className="bg-[#4b6043] hover:bg-[#5a7350]"
+                  onClick={() => setSetTargetsOpen(true)}
+                >
+                  Set Targets
+                </Button>
 
-            <Button
-              type="default"
-              icon={<Eye className="w-4 h-4" />}
-              onClick={() => setViewTargetsOpen(true)}
-            >
-              View Targets
-            </Button>
+                <Button
+                  type="default"
+                  icon={<Eye className="w-4 h-4" />}
+                  onClick={() => setViewTargetsOpen(true)}
+                >
+                  View Targets
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>

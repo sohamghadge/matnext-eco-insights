@@ -7,12 +7,14 @@ interface KPICardProps {
   title: string;
   value: number | string;
   target?: number;
+  targetLabel?: string;
   unit?: string;
   variant: CardVariant;
   isLoading?: boolean;
   showProgress?: boolean;
   trend?: { value: number; isPositive: boolean };
   previousValue?: string;
+  action?: React.ReactNode;
 }
 
 const variantClasses: Record<CardVariant, string> = {
@@ -24,14 +26,14 @@ const variantClasses: Record<CardVariant, string> = {
 
 // Get color based on percentage thresholds (Red/Yellow/Green)
 export const getProgressColor = (percentage: number): string => {
-  if (percentage >= 75) return '#16a34a'; // Green - good
-  if (percentage >= 50) return '#eab308'; // Yellow - warning
+  if (percentage >= 100) return '#16a34a'; // Green - met
+  if (percentage >= 80) return '#eab308'; // Yellow - close
   return '#dc2626'; // Red - danger
 };
 
 export const getStatusClass = (percentage: number): string => {
-  if (percentage >= 75) return 'status-success';
-  if (percentage >= 50) return 'status-warning';
+  if (percentage >= 100) return 'status-success';
+  if (percentage >= 80) return 'status-warning';
   return 'status-danger';
 };
 
@@ -52,12 +54,14 @@ const KPICard = ({
   title,
   value,
   target,
+  targetLabel = 'Target:',
   unit = '',
   variant,
   isLoading = false,
   showProgress = false,
   trend,
   previousValue,
+  action
 }: KPICardProps) => {
   const percentage = target ? Math.round((Number(value) / target) * 100) : 0;
   const progressColor = getProgressColor(percentage);
@@ -72,10 +76,15 @@ const KPICard = ({
 
   return (
     <div className={`${variantClasses[variant]} rounded-xl p-5 shadow-card card-hover relative overflow-hidden min-h-[140px] animate-fade-in`}>
-      {/* External Link Icon */}
-      <button className="absolute top-3 right-3 opacity-50 hover:opacity-100 transition-opacity">
-        <ExternalLink className="w-4 h-4" />
-      </button>
+      {/* External Link Icon or Action */}
+      <div className="absolute top-3 right-3 flex items-center gap-2">
+        {action}
+        {!action && (
+          <button className="opacity-50 hover:opacity-100 transition-opacity">
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
       {/* Title */}
       <h3 className="text-sm font-medium mb-3 pr-6">{title}</h3>
@@ -102,7 +111,7 @@ const KPICard = ({
                   <span className="text-sm font-normal ml-1">{unit}</span>
                 </p>
                 <p className="text-xs opacity-70">
-                  Target: {target.toLocaleString()} {unit}
+                  {targetLabel} {target.toLocaleString()} {unit}
                 </p>
               </div>
             </div>
@@ -112,10 +121,10 @@ const KPICard = ({
                 {typeof value === 'number' ? value.toLocaleString() : value}
                 <span className="text-base font-normal ml-1">{unit}</span>
               </p>
-              
+
               {/* Trend indicator with color coding */}
               {trend && (
-                <div 
+                <div
                   className="flex items-center gap-1 mt-2 text-sm font-medium"
                   style={{ color: trend.isPositive ? '#16a34a' : '#dc2626' }}
                 >

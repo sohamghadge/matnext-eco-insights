@@ -137,12 +137,38 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
       render: (text: string) => <span className="font-medium text-primary">{text}</span>,
     },
     {
-      title: 'Recycled Content',
+      title: 'Overall Recycled Content',
       dataIndex: 'recycledContentPercent',
       key: 'recycledContentPercent',
       render: (val: number) => (
         <span className="font-bold text-emerald-600">{(val * 100).toFixed(1)}%</span>
       ),
+    },
+    {
+      title: 'Steel (Target / Achieved)',
+      key: 'steel',
+      render: (_: unknown, record: any) => (
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">{record.steelTarget}%</span>
+          <span className="text-gray-400">/</span>
+          <span className={`font-semibold ${record.steelAchieved >= record.steelTarget ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {record.steelAchieved}%
+          </span>
+        </div>
+      )
+    },
+    {
+      title: 'Aluminum (Target / Achieved)',
+      key: 'aluminum',
+      render: (_: unknown, record: any) => (
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">{record.aluminumTarget}%</span>
+          <span className="text-gray-400">/</span>
+          <span className={`font-semibold ${record.aluminumAchieved >= record.aluminumTarget ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {record.aluminumAchieved}%
+          </span>
+        </div>
+      )
     },
     {
       title: 'Status',
@@ -185,17 +211,30 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
       render: (text: string) => <span className="font-medium text-primary">{text}</span>,
     },
     {
-      title: 'Recycled Content',
-      dataIndex: 'recycledContentPercent',
+      title: 'Material',
+      dataIndex: 'material',
+      key: 'material',
+      render: (text: string) => <Tag>{text}</Tag>,
+    },
+    {
+      title: 'Recycled Content (Target vs Met)',
       key: 'recycledContentPercent',
-      render: (val: number) => (
-        <Progress
-          percent={val * 100}
-          steps={5}
-          size="small"
-          strokeColor="#10b981"
-          format={(percent) => `${percent?.toFixed(0)}%`}
-        />
+      render: (_: unknown, record: any) => (
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-gray-500">Target: {(record.targetPercent * 100).toFixed(0)}%</span>
+            <span className={`font-medium ${record.recycledContentPercent >= record.targetPercent ? 'text-emerald-600' : 'text-amber-600'}`}>
+              Met: {(record.recycledContentPercent * 100).toFixed(0)}%
+            </span>
+          </div>
+          <Progress
+            percent={record.recycledContentPercent * 100}
+            success={{ percent: record.targetPercent * 100 }}
+            size="small"
+            showInfo={false}
+            strokeColor={record.recycledContentPercent >= record.targetPercent ? "#10b981" : "#f59e0b"}
+          />
+        </div>
       ),
     },
     {
@@ -289,6 +328,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
                 value={item.achieved}
                 unit="MT"
                 target={item.target}
+                targetLabel="Company Target"
                 variant={variants[index % variants.length]}
                 trend={{ value: 2.5, isPositive: true }}
                 showProgress={true}

@@ -162,6 +162,11 @@ export const getMaterialTargets = (filters: FilterState): MaterialTarget[] => {
 export interface ModelRecycledContent {
   model: string;
   recycledContentPercent: number;
+  // New fields for breakdown
+  steelTarget: number;
+  steelAchieved: number;
+  aluminumTarget: number;
+  aluminumAchieved: number;
   status: 'compliant' | 'warning' | 'critical';
   targetMarket: string;
   financialYear: string;
@@ -170,14 +175,14 @@ export interface ModelRecycledContent {
 }
 
 const masterModelRecycledContent: ModelRecycledContent[] = [
-  { model: 'Fronx', recycledContentPercent: 0.010, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 8.5 },
-  { model: 'Wagon-R', recycledContentPercent: 0.005, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 7.2 },
-  { model: 'Alto', recycledContentPercent: 0.008, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.8 },
-  { model: 'Super Carry', recycledContentPercent: 0.004, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 6.5 },
-  { model: 'Swift', recycledContentPercent: 0.012, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 9.1 },
-  { model: 'Baleno', recycledContentPercent: 0.009, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 8.0 },
-  { model: 'Dzire', recycledContentPercent: 0.007, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.5 },
-  { model: 'Ertiga', recycledContentPercent: 0.011, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.8 },
+  { model: 'Fronx', recycledContentPercent: 0.010, steelTarget: 20, steelAchieved: 22, aluminumTarget: 10, aluminumAchieved: 12, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 8.5 },
+  { model: 'Wagon-R', recycledContentPercent: 0.005, steelTarget: 20, steelAchieved: 18, aluminumTarget: 10, aluminumAchieved: 8, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 7.2 },
+  { model: 'Alto', recycledContentPercent: 0.008, steelTarget: 20, steelAchieved: 21, aluminumTarget: 10, aluminumAchieved: 9, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.8 },
+  { model: 'Super Carry', recycledContentPercent: 0.004, steelTarget: 15, steelAchieved: 14, aluminumTarget: 8, aluminumAchieved: 7, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 6.5 },
+  { model: 'Swift', recycledContentPercent: 0.012, steelTarget: 20, steelAchieved: 24, aluminumTarget: 10, aluminumAchieved: 11, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 9.1 },
+  { model: 'Baleno', recycledContentPercent: 0.009, steelTarget: 20, steelAchieved: 20, aluminumTarget: 10, aluminumAchieved: 9.5, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 8.0 },
+  { model: 'Dzire', recycledContentPercent: 0.007, steelTarget: 20, steelAchieved: 19, aluminumTarget: 10, aluminumAchieved: 8.5, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.5 },
+  { model: 'Ertiga', recycledContentPercent: 0.011, steelTarget: 20, steelAchieved: 22, aluminumTarget: 10, aluminumAchieved: 11, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.8 },
 ];
 
 export const modelRecycledContent = masterModelRecycledContent;
@@ -190,7 +195,9 @@ export const getModelRecycledContent = (filters: FilterState): ModelRecycledCont
 
 export interface PartRecycledContent {
   part: string;
+  material: string; // New field
   recycledContentPercent: number;
+  targetPercent: number; // New field
   targetMarket: string;
   financialYear: string;
   plant: string;
@@ -198,14 +205,14 @@ export interface PartRecycledContent {
 }
 
 const masterPartRecycledContent: PartRecycledContent[] = [
-  { part: 'Front Bumper', recycledContentPercent: 0.50, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 8.2 },
-  { part: 'Rear Bumper', recycledContentPercent: 0.40, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.5 },
-  { part: 'Dashboard', recycledContentPercent: 0.20, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 6.0 },
-  { part: 'Door Panels', recycledContentPercent: 0.50, targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.5 },
-  { part: 'Wheel Arch', recycledContentPercent: 0.35, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.0 },
-  { part: 'Engine Cover', recycledContentPercent: 0.28, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 6.8 },
-  { part: 'Fender Liners', recycledContentPercent: 0.45, targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.0 },
-  { part: 'Trunk Liner', recycledContentPercent: 0.38, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.2 },
+  { part: 'Front Bumper', material: 'Plastic (PP)', recycledContentPercent: 0.50, targetPercent: 0.45, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 8.2 },
+  { part: 'Rear Bumper', material: 'Plastic (PP)', recycledContentPercent: 0.40, targetPercent: 0.45, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.5 },
+  { part: 'Dashboard', material: 'Plastic (ABS)', recycledContentPercent: 0.20, targetPercent: 0.25, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 6.0 },
+  { part: 'Door Panels', material: 'Plastic (PP)', recycledContentPercent: 0.50, targetPercent: 0.45, targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.5 },
+  { part: 'Wheel Arch', material: 'Plastic (PE)', recycledContentPercent: 0.35, targetPercent: 0.30, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.0 },
+  { part: 'Engine Cover', material: 'Plastic (PA)', recycledContentPercent: 0.28, targetPercent: 0.30, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 6.8 },
+  { part: 'Fender Liners', material: 'Plastic (PE)', recycledContentPercent: 0.45, targetPercent: 0.40, targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.0 },
+  { part: 'Trunk Liner', material: 'Textile', recycledContentPercent: 0.38, targetPercent: 0.35, targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.2 },
 ];
 
 export const partRecycledContent = masterPartRecycledContent;

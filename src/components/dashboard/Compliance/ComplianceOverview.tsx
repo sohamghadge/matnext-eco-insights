@@ -44,16 +44,48 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                 break;
         }
 
+        // Custom rendering for "Active Models" to show split
+        if (stat.label === 'Active Models') {
+            // Calculate split based on data.models
+            const domestic = data.models.filter(m => m.targetMarket === 'Domestic').length;
+            const exports = data.models.filter(m => m.targetMarket === 'Export').length;
+
+            return (
+                <Card className="shadow-sm border-gray-100 hover:shadow-md transition-shadow h-full">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <Text type="secondary" className="text-xs font-semibold uppercase tracking-wider">{stat.label}</Text>
+                            <div className={`text-2xl font-bold mt-1 ${color}`}>{stat.value}</div>
+                            <div className="flex gap-3 mt-2">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-gray-500 uppercase">Domestic</span>
+                                    <span className="text-sm font-semibold text-gray-700">{domestic}</span>
+                                </div>
+                                <div className="w-px bg-gray-200 h-8 self-center"></div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-gray-500 uppercase">Export</span>
+                                    <span className="text-sm font-semibold text-gray-700">{exports}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className={`p-2 rounded-lg ${bgColor}`}>
+                            <Icon className={`w-5 h-5 ${color}`} />
+                        </div>
+                    </div>
+                </Card>
+            );
+        }
+
         return (
             <Card className="shadow-sm border-gray-100 hover:shadow-md transition-shadow h-full">
                 <div className="flex items-start justify-between">
                     <div>
                         <Text type="secondary" className="text-xs font-semibold uppercase tracking-wider">{stat.label}</Text>
-                        <div className={`text - 2xl font - bold mt - 1 ${color} `}>{stat.value}</div>
+                        <div className={`text-2xl font-bold mt-1 ${color}`}>{stat.value}</div>
                         {stat.subValue && <Text type="secondary" className="text-xs mt-1 block">{stat.subValue}</Text>}
                     </div>
-                    <div className={`p - 2 rounded - lg ${bgColor} `}>
-                        <Icon className={`w - 5 h - 5 ${color} `} />
+                    <div className={`p-2 rounded-lg ${bgColor}`}>
+                        <Icon className={`w-5 h-5 ${color}`} />
                     </div>
                 </div>
             </Card>
@@ -63,25 +95,60 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
     // Regulations Table Columns
     const regulationColumns = [
         {
-            title: 'Regulation',
+            title: 'Regulation Name',
             dataIndex: 'name',
             key: 'name',
+            width: 250,
             render: (text: string, record: Regulation) => (
                 <div>
                     <div className="font-semibold text-gray-800">{text}</div>
-                    <div className="text-xs text-gray-500">{record.description}</div>
+                    <div className="text-xs text-gray-500">{record.formalName}</div>
                 </div>
             ),
+        },
+        {
+            title: 'Region',
+            dataIndex: 'country',
+            key: 'country',
+            width: 100,
+            render: (text: string) => <Tag>{text}</Tag>
+        },
+        {
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
+            ellipsis: true,
         },
         {
             title: 'Deadline',
             dataIndex: 'deadline',
             key: 'deadline',
+            width: 120,
+        },
+        {
+            title: 'Target vs Achieved',
+            key: 'target',
+            width: 200,
+            render: (_: any, record: Regulation) => (
+                <div className="flex flex-col text-xs">
+                    <div className="flex justify-between">
+                        <span className="text-gray-500">Target:</span>
+                        <span className="font-medium">{record.quantitativeTarget || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-500">Achieved:</span>
+                        <span className={`font-medium ${record.status === 'Compliant' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {record.quantitativeAchieved || '-'}
+                        </span>
+                    </div>
+                </div>
+            )
         },
         {
             title: 'Impact',
             dataIndex: 'impact',
             key: 'impact',
+            width: 100,
             render: (impact: string) => (
                 <Tag color={impact === 'High' ? 'red' : impact === 'Medium' ? 'orange' : 'blue'}>{impact}</Tag>
             ),
@@ -90,6 +157,7 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
+            width: 120,
             render: (status: string) => {
                 let color = 'default';
                 if (status === 'Compliant') color = 'success';
@@ -100,12 +168,13 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
         },
     ];
 
-    // Vehicle Compliance Table Columns
+    // Vehicle Compliance Table Columns (CBAM)
     const modelColumns = [
         {
             title: 'Model',
             dataIndex: 'name',
             key: 'name',
+            width: 250,
             render: (text: string, record: ModelComplianceData) => (
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-8 rounded shadow-sm bg-gray-100 overflow-hidden relative">
@@ -130,37 +199,59 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             ),
         },
         {
-            title: 'Compliance Score',
-            dataIndex: 'complianceScore',
-            key: 'complianceScore',
-            render: (score: number) => (
-                <div className="w-24">
-                    <Progress percent={score} size="small" strokeColor={score >= 90 ? '#10b981' : score >= 80 ? '#f59e0b' : '#ef4444'} />
-                </div>
-            ),
-            sorter: (a: ModelComplianceData, b: ModelComplianceData) => a.complianceScore - b.complianceScore,
-        },
-        {
-            title: 'Exports (EU)',
-            key: 'exports',
+            title: 'Part Count Split',
+            key: 'partSplit',
             render: (_: any, record: ModelComplianceData) => (
-                <div className="text-gray-600 font-medium">
-                    {record.exportData ? record.exportData.totalExportUnits.toLocaleString() : '-'}
+                <div className="text-xs">
+                    <div>Total: <span className="font-semibold">{record.partCountTotal}</span></div>
+                    <div className="text-gray-500">St: {record.partCountSteel} | Al: {record.partCountAl}</div>
                 </div>
             )
         },
         {
-            title: 'CBAM Ready',
-            key: 'cbamReady',
-            render: (_: any, record: ModelComplianceData) => {
-                if (!record.exportData) return <span className="text-gray-400">-</span>;
-                const pct = record.exportData.compliantPercentage;
-                return (
-                    <Tag color={pct >= 90 ? 'success' : pct >= 70 ? 'warning' : 'error'}>
-                        {pct}%
-                    </Tag>
-                )
-            }
+            title: 'Ratio (Vol/Comp)',
+            key: 'ratio',
+            render: (_: any, record: ModelComplianceData) => (
+                <div className="text-xs">
+                    <div className="flex justify-between w-24">
+                        <span>Steel:</span>
+                        <span className="font-medium">{(record.volumePartCompliantSteel / record.volumePartCountSteel * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between w-24">
+                        <span>Al:</span>
+                        <span className="font-medium">{(record.volumePartCompliantAl / record.volumePartCountAl * 100).toFixed(0)}%</span>
+                    </div>
+                </div>
+            )
+        },
+        {
+            title: 'Exp. Count',
+            dataIndex: 'exportVehicleCount',
+            key: 'exportVehicleCount',
+            render: (val: number) => <span className="font-semibold">{val?.toLocaleString()}</span>
+        },
+        {
+            title: 'Readiness',
+            dataIndex: 'cbamReadiness',
+            key: 'cbamReadiness',
+            render: (val: number) => (
+                <div className="w-20">
+                    <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
+                    <div className="text-xs text-right mt-0.5">{val}%</div>
+                </div>
+            )
+        },
+        {
+            title: 'Calculation',
+            dataIndex: 'cbamCalculation',
+            key: 'cbamCalculation',
+            render: (text: string) => <Tag color="blue">{text}</Tag>
+        },
+        {
+            title: 'Amount (EUR)',
+            dataIndex: 'cbamAmount',
+            key: 'cbamAmount',
+            render: (val: number) => <span className="font-mono text-gray-700">€{val?.toLocaleString()}</span>
         },
         {
             title: 'Action',
@@ -227,6 +318,12 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
     // Common Render for EPR Parts
     const eprPartColumns = (type: 'Recovery' | 'Recycling') => [
         {
+            title: 'Part ID',
+            dataIndex: 'partId',
+            key: 'partId',
+            render: (text: string) => <span className="font-mono text-xs text-gray-500">{text || 'N/A'}</span>
+        },
+        {
             title: 'Part Name',
             dataIndex: 'name',
             key: 'name',
@@ -256,37 +353,38 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             )
         },
         {
-            title: 'Status',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string, record: EPRPartData) => {
-                let color = 'default';
-                if (status === 'Compliant') color = 'success';
-                if (status === 'Non-Compliant') color = 'error';
-                if (status === 'Warning') color = 'warning';
-
-                return (
-                    <div className="flex flex-col items-start gap-1">
-                        <Tag color={color} className="mr-0">{status}</Tag>
-                        {status === 'Non-Compliant' && (
-                            <span className="text-[10px] text-red-600 font-medium">
-                                {(record.benchmark - record.rate).toFixed(1)}% under target
-                            </span>
-                        )}
-                        {status === 'Warning' && (
-                            <span className="text-[10px] text-amber-600 font-medium">
-                                Near limit
-                            </span>
-                        )}
-                    </div>
-                );
-            }
+            title: 'Exp. Qty',
+            dataIndex: 'exportQty',
+            key: 'exportQty',
+            render: (val: number) => <span className="text-gray-700">{val?.toLocaleString() || '-'}</span>
+        },
+        {
+            title: 'Readiness',
+            dataIndex: 'cbamReadiness',
+            key: 'cbamReadiness',
+            render: (val: number) => (
+                <div className="w-20">
+                    <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
+                    <div className="text-xs text-right mt-0.5">{val ?? '-'}%</div>
+                </div>
+            )
+        },
+        {
+            title: 'Calculation',
+            dataIndex: 'cbamCalculation',
+            key: 'cbamCalculation',
+            render: (text: string) => <Tag color="blue">{text || '-'}</Tag>
+        },
+        {
+            title: 'Amount (EUR)',
+            dataIndex: 'cbamAmount',
+            key: 'cbamAmount',
+            render: (val: number) => <span className="font-mono text-gray-700">{val ? `€${val.toLocaleString()}` : '-'}</span>
         },
         {
             title: 'Action',
-            dataIndex: 'action',
             key: 'action',
-            render: (text: string) => <span className="text-xs text-gray-500">{text}</span>
+            render: (_: any) => <Button type="text" size="small" className="text-blue-600">Edit</Button>
         }
     ];
 
@@ -307,6 +405,12 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
     }, [filteredParts]);
 
     const partColumns = [
+        {
+            title: 'Part ID',
+            dataIndex: 'partId',
+            key: 'partId',
+            render: (text: string) => <span className="font-mono text-xs text-gray-500">{text || 'N/A'}</span>
+        },
         {
             title: 'Part Name',
             dataIndex: 'name',
@@ -329,52 +433,37 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             )
         },
         {
-            title: 'HS Code',
-            dataIndex: 'hsCode',
-            key: 'hsCode',
-            render: (text: string) => <span className="font-mono text-xs">{text}</span>
+            title: 'Exp. Count',
+            dataIndex: 'exportQty',
+            key: 'exportQty',
+            render: (val: number) => <span className="text-gray-700">{val?.toLocaleString() || '-'}</span>
         },
         {
-            title: 'Emission Intensity',
-            dataIndex: 'emissions',
-            key: 'emissions',
-            render: (val: number, record: PartComplianceData) => (
-                <div>
-                    <div className="font-semibold text-gray-800">{val} <span className="text-[10px] font-normal text-gray-400">tCO2e/t</span></div>
-                    {/* Display Benchmark */}
-                    <div className="text-[10px] text-gray-500">
-                        Limit: <span className="font-medium">{record.benchmark}</span>
-                    </div>
-                </div>
-            )
-        },
-        {
-            title: 'Status',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string, record: PartComplianceData) => {
-                let color = 'default';
-                if (status === 'Compliant') color = 'success';
-                if (status === 'Non-Compliant') color = 'error';
-                if (status === 'Warning') color = 'warning';
-
-                return (
-                    <div className="flex flex-col items-start gap-1">
-                        <Tag color={color} className="mr-0">{status}</Tag>
-                        {status === 'Non-Compliant' && (
-                            <span className="text-[10px] text-red-600 font-medium">
-                                +{((record.emissions - record.benchmark) / record.benchmark * 100).toFixed(0)}% over limit
-                            </span>
-                        )}
-                    </div>
-                );
+            title: 'Readiness',
+            dataIndex: 'cbamReadiness',
+            key: 'cbamReadiness',
+            render: (val: number) => {
+                if (val === undefined) return <span className="text-gray-400">-</span>;
+                let color = val >= 90 ? 'text-emerald-600' : val >= 70 ? 'text-amber-600' : 'text-red-600';
+                return <span className={`font-bold ${color}`}>{val}%</span>;
             }
         },
         {
+            title: 'Calculation',
+            dataIndex: 'cbamCalculation',
+            key: 'cbamCalculation',
+            render: (val: string) => val ? <span className="text-xs bg-gray-100 px-1 py-0.5 rounded">{val}</span> : '-'
+        },
+        {
+            title: 'Amount (EUR)',
+            dataIndex: 'cbamAmount',
+            key: 'cbamAmount',
+            render: (val: number) => val ? <span className="font-mono text-xs">€{val.toLocaleString()}</span> : '-'
+        },
+        {
             title: 'Action',
-            dataIndex: 'action',
             key: 'action',
-            render: (text: string) => <span className="text-xs text-gray-600">{text}</span>
+            render: (_: any) => <Button type="text" size="small" className="text-blue-600">Edit</Button>
         }
     ];
 
@@ -548,38 +637,77 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                         </h4>
                     </div>
                     <Table
-                        dataSource={data.models}
+                        dataSource={data.models.filter(m => m.generation === 'Legacy')} // Only Legacy models for Recovery focus? Or all? Requirement says "Legacy (Recovery)" and "New (Recycling)"
                         rowKey="id"
                         pagination={false}
                         size="small"
                         columns={[
                             {
-                                title: 'Vehicle',
+                                title: 'Model',
                                 dataIndex: 'name',
                                 key: 'name',
-                                render: (text: string) => <span className="font-medium">{text}</span>
+                                width: 250,
+                                render: (text: string, record: ModelComplianceData) => (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-12 h-8 rounded shadow-sm bg-gray-100 overflow-hidden relative">
+                                            <img src={record.image} alt={text} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                        </div>
+                                        <div>
+                                            <div className="font-medium text-gray-700">{text}</div>
+                                            <Tag className="text-[10px] m-0">{record.type}</Tag>
+                                        </div>
+                                    </div>
+                                ),
                             },
                             {
-                                title: 'Target Rate',
-                                dataIndex: ['eprRecovery', 'target'],
-                                key: 'target',
-                                render: (val: number) => `${val}% `
+                                title: 'Part Count Split',
+                                key: 'partSplit',
+                                render: (_: any, record: ModelComplianceData) => (
+                                    <div className="text-xs">
+                                        <div>Total: <span className="font-semibold">{record.partCountTotal}</span></div>
+                                        <div className="text-gray-500">St: {record.partCountSteel} | Al: {record.partCountAl}</div>
+                                    </div>
+                                )
                             },
                             {
-                                title: 'Actual Rate',
-                                dataIndex: ['eprRecovery', 'actual'],
-                                key: 'actual',
-                                render: (val: number) => <span className="font-bold">{val}%</span>
+                                title: 'Recovery Rate',
+                                key: 'recoveryRate',
+                                render: (_: any, record: ModelComplianceData) => (
+                                    <div>
+                                        <div className="font-bold">{record.eprRecovery?.actual ?? '-'}%</div>
+                                        <div className="text-[10px] text-gray-500">Target: {record.eprRecovery?.target ?? '-'}%</div>
+                                    </div>
+                                )
                             },
                             {
-                                title: 'Status',
-                                dataIndex: ['eprRecovery', 'status'],
-                                key: 'status',
-                                render: (status: string) => {
-                                    let color = status === 'Compliant' ? 'success' : status === 'Non-Compliant' ? 'error' : 'warning';
-                                    return <Tag color={color}>{status}</Tag>
-                                }
-                            }
+                                title: 'Exp. Count',
+                                dataIndex: 'exportVehicleCount',
+                                key: 'exportVehicleCount',
+                                render: (val: number) => <span className="font-semibold">{val?.toLocaleString()}</span>
+                            },
+                            {
+                                title: 'Readiness',
+                                dataIndex: 'cbamReadiness',
+                                key: 'cbamReadiness',
+                                render: (val: number) => (
+                                    <div className="w-20">
+                                        <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
+                                        <div className="text-xs text-right mt-0.5">{val}%</div>
+                                    </div>
+                                )
+                            },
+                            {
+                                title: 'Calculation',
+                                dataIndex: 'cbamCalculation',
+                                key: 'cbamCalculation',
+                                render: (text: string) => <Tag color="blue">{text}</Tag>
+                            },
+                            {
+                                title: 'Amount (EUR)',
+                                dataIndex: 'cbamAmount',
+                                key: 'cbamAmount',
+                                render: (val: number) => <span className="font-mono text-gray-700">€{val?.toLocaleString()}</span>
+                            },
                         ]}
                     />
                 </div>
@@ -614,9 +742,10 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                                 onChange={(val) => setEprRecoveryModelFilter(val || 'All')}
                                 style={{ width: 160 }}
                             >
-                                <Option value="evitara">eVitara</Option>
-                                <Option value="fronx">Fronx</Option>
-                                <Option value="baleno">Baleno</Option>
+                                <Option value="All">All Models</Option>
+                                <Option value="alto">Alto K10</Option>
+                                <Option value="wagonr">Wagon R</Option>
+                                <Option value="swift">Swift</Option>
                             </Select>
                         </div>
 
@@ -684,38 +813,77 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                         </h4>
                     </div>
                     <Table
-                        dataSource={data.models}
+                        dataSource={data.models.filter(m => m.generation === 'New')} // Only New models for Recycling focus?
                         rowKey="id"
                         pagination={false}
                         size="small"
                         columns={[
                             {
-                                title: 'Vehicle',
+                                title: 'Model',
                                 dataIndex: 'name',
                                 key: 'name',
-                                render: (text: string) => <span className="font-medium">{text}</span>
+                                width: 250,
+                                render: (text: string, record: ModelComplianceData) => (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-12 h-8 rounded shadow-sm bg-gray-100 overflow-hidden relative">
+                                            <img src={record.image} alt={text} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                        </div>
+                                        <div>
+                                            <div className="font-medium text-gray-700">{text}</div>
+                                            <Tag className="text-[10px] m-0">{record.type}</Tag>
+                                        </div>
+                                    </div>
+                                ),
                             },
                             {
-                                title: 'Target Rate',
-                                dataIndex: ['eprRecycling', 'target'],
-                                key: 'target',
-                                render: (val: number) => `${val}% `
+                                title: 'Part Count Split',
+                                key: 'partSplit',
+                                render: (_: any, record: ModelComplianceData) => (
+                                    <div className="text-xs">
+                                        <div>Total: <span className="font-semibold">{record.partCountTotal}</span></div>
+                                        <div className="text-gray-500">St: {record.partCountSteel} | Al: {record.partCountAl}</div>
+                                    </div>
+                                )
                             },
                             {
-                                title: 'Actual Rate',
-                                dataIndex: ['eprRecycling', 'actual'],
-                                key: 'actual',
-                                render: (val: number) => <span className="font-bold">{val}%</span>
+                                title: 'Recycling Rate',
+                                key: 'recyclingRate',
+                                render: (_: any, record: ModelComplianceData) => (
+                                    <div>
+                                        <div className="font-bold">{record.eprRecycling?.actual ?? '-'}%</div>
+                                        <div className="text-[10px] text-gray-500">Target: {record.eprRecycling?.target ?? '-'}%</div>
+                                    </div>
+                                )
                             },
                             {
-                                title: 'Status',
-                                dataIndex: ['eprRecycling', 'status'],
-                                key: 'status',
-                                render: (status: string) => {
-                                    let color = status === 'Compliant' ? 'success' : status === 'Non-Compliant' ? 'error' : 'warning';
-                                    return <Tag color={color}>{status}</Tag>
-                                }
-                            }
+                                title: 'Exp. Count',
+                                dataIndex: 'exportVehicleCount',
+                                key: 'exportVehicleCount',
+                                render: (val: number) => <span className="font-semibold">{val?.toLocaleString()}</span>
+                            },
+                            {
+                                title: 'Readiness',
+                                dataIndex: 'cbamReadiness',
+                                key: 'cbamReadiness',
+                                render: (val: number) => (
+                                    <div className="w-20">
+                                        <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
+                                        <div className="text-xs text-right mt-0.5">{val}%</div>
+                                    </div>
+                                )
+                            },
+                            {
+                                title: 'Calculation',
+                                dataIndex: 'cbamCalculation',
+                                key: 'cbamCalculation',
+                                render: (text: string) => <Tag color="blue">{text}</Tag>
+                            },
+                            {
+                                title: 'Amount (EUR)',
+                                dataIndex: 'cbamAmount',
+                                key: 'cbamAmount',
+                                render: (val: number) => <span className="font-mono text-gray-700">€{val?.toLocaleString()}</span>
+                            },
                         ]}
                     />
                 </div>
@@ -750,6 +918,7 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                                 onChange={(val) => setEprRecyclingModelFilter(val || 'All')}
                                 style={{ width: 160 }}
                             >
+                                <Option value="All">All Models</Option>
                                 <Option value="evitara">eVitara</Option>
                                 <Option value="fronx">Fronx</Option>
                                 <Option value="baleno">Baleno</Option>
@@ -785,7 +954,6 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                     />
                 </div>
             </div>
-
             {/* Modal for detailed vehicle view */}
             <Modal
                 title={

@@ -358,27 +358,26 @@ export interface RVSFSummaryStats {
 }
 
 const masterRvsfSummaryStats: RVSFSummaryStats = {
-  vehiclesScrapped: 8542,
-  inventory: { value: 45678, unit: 'kg' },
-  codGenerated: 5234,
-  msilTestVehiclesScrapped: 612,
-  collectionCentres: 47,
+  vehiclesScrapped: 6607,
+  inventory: { value: 6607, unit: 'Nos' },
+  codGenerated: 6607,
+  msilTestVehiclesScrapped: 242,
+  collectionCentres: 54,
   complianceScore: 8.7,
 };
 
 export const rvsfSummaryStats = masterRvsfSummaryStats;
 
 export const getRVSFSummaryStats = (filters: FilterState): RVSFSummaryStats => {
-  const prorationFactor = getProrationFactor(filters);
   return {
     ...masterRvsfSummaryStats,
-    vehiclesScrapped: Math.round(masterRvsfSummaryStats.vehiclesScrapped * prorationFactor),
+    vehiclesScrapped: masterRvsfSummaryStats.vehiclesScrapped,
     inventory: {
-      value: Math.round(masterRvsfSummaryStats.inventory.value * prorationFactor),
+      value: masterRvsfSummaryStats.inventory.value,
       unit: masterRvsfSummaryStats.inventory.unit
     },
-    codGenerated: Math.round(masterRvsfSummaryStats.codGenerated * prorationFactor),
-    msilTestVehiclesScrapped: Math.round(masterRvsfSummaryStats.msilTestVehiclesScrapped * prorationFactor),
+    codGenerated: masterRvsfSummaryStats.codGenerated,
+    msilTestVehiclesScrapped: masterRvsfSummaryStats.msilTestVehiclesScrapped,
     complianceScore: masterRvsfSummaryStats.complianceScore // Score doesn't scale
   };
 };
@@ -428,10 +427,11 @@ export interface ScrapDispatchDetails {
 }
 
 const masterScrapDispatchDetails: ScrapDispatchDetails[] = [
-  { material: 'Steel', value: 3085, unit: 'MT', ecoScore: 9.0 },
-  { material: 'Plastic', value: 328, unit: 'MT', ecoScore: 7.5 },
-  { material: 'Cast Iron', value: 156.2, unit: 'MT/kg', ecoScore: 8.2 },
-  { material: 'Li-Ion Batteries', value: 45.6, unit: 'MT/kg', ecoScore: 9.5 },
+  { material: 'Steel', value: 730070, unit: 'Kgs', ecoScore: 9.0 },
+  { material: 'Plastic', value: 18684, unit: 'Kgs', ecoScore: 7.5 },
+  { material: 'Cast Iron', value: 0, unit: 'Kgs', ecoScore: 8.2 },
+  { material: 'Li-Ion Batteries', value: 0, unit: 'Kgs', ecoScore: 9.5 },
+  { material: 'Other materials', value: 0, unit: 'Kgs', ecoScore: 0.0 },
 ];
 
 export const scrapDispatchDetails = masterScrapDispatchDetails;

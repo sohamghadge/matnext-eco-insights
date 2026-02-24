@@ -274,7 +274,7 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-emerald-800">Process Loss</span>
-              <span className="font-bold text-red-600">3.2%</span>
+              <span className="font-bold text-red-600">-</span>
             </div>
             <div className="flex justify-between items-center pt-2 border-t border-emerald-200">
               <span className="text-sm font-semibold text-emerald-900">Performance Rating</span>
@@ -591,46 +591,31 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
             <Button size="small" icon={<Download className="w-3 h-3" />}>Export CODs</Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <div className="bg-blue-50 rounded-lg p-3 text-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-100 shadow-sm md:col-span-2 lg:col-span-1 lg:col-start-1">
             <div className="text-2xl font-bold text-blue-700">{rvsfSummaryData.codGenerated}</div>
-            <div className="text-xs text-blue-600 mt-1">Total CODs Generated</div>
-          </div>
-          <div className="bg-green-50 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-green-700">{Math.round(rvsfSummaryData.codGenerated * 0.92)}</div>
-            <div className="text-xs text-green-600 mt-1">Verified</div>
-          </div>
-          <div className="bg-amber-50 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-amber-700">{Math.round(rvsfSummaryData.codGenerated * 0.06)}</div>
-            <div className="text-xs text-amber-600 mt-1">Pending Verification</div>
-          </div>
-          <div className="bg-red-50 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-red-700">{Math.round(rvsfSummaryData.codGenerated * 0.02)}</div>
-            <div className="text-xs text-red-600 mt-1">Rejected</div>
+            <div className="text-xs text-blue-600 mt-1">Total CODs Issued</div>
           </div>
         </div>
         <Table
           columns={[
             { title: codPeriod === 'monthly' ? 'Month' : 'Year', dataIndex: 'period', key: 'period', render: (t: string) => <span className="font-medium">{t}</span> },
             { title: 'CODs Issued', dataIndex: 'issued', key: 'issued', render: (v: number) => <span className="font-semibold text-blue-700">{v}</span> },
-            { title: 'Verified', dataIndex: 'verified', key: 'verified', render: (v: number) => <Tag color="green">{v}</Tag> },
-            { title: 'Pending', dataIndex: 'pending', key: 'pending', render: (v: number) => <Tag color="gold">{v}</Tag> },
-            { title: 'Rejected', dataIndex: 'rejected', key: 'rejected', render: (v: number) => v > 0 ? <Tag color="red">{v}</Tag> : <span>0</span> },
           ]}
           dataSource={
             codPeriod === 'monthly'
               ? [
-                { key: '1', period: 'Apr 2025', issued: 42, verified: 39, pending: 2, rejected: 1 },
-                { key: '2', period: 'May 2025', issued: 38, verified: 35, pending: 3, rejected: 0 },
-                { key: '3', period: 'Jun 2025', issued: 51, verified: 47, pending: 3, rejected: 1 },
-                { key: '4', period: 'Jul 2025', issued: 45, verified: 42, pending: 2, rejected: 1 },
-                { key: '5', period: 'Aug 2025', issued: 55, verified: 50, pending: 4, rejected: 1 },
-                { key: '6', period: 'Sep 2025', issued: 48, verified: 45, pending: 2, rejected: 1 },
+                { key: '1', period: 'Apr 2025', issued: 1042 },
+                { key: '2', period: 'May 2025', issued: 1238 },
+                { key: '3', period: 'Jun 2025', issued: 1151 },
+                { key: '4', period: 'Jul 2025', issued: 945 },
+                { key: '5', period: 'Aug 2025', issued: 1155 },
+                { key: '6', period: 'Sep 2025', issued: 1076 },
               ]
               : [
-                { key: '1', period: 'FY 2023-24', issued: 410, verified: 380, pending: 20, rejected: 10 },
-                { key: '2', period: 'FY 2024-25', issued: 520, verified: 478, pending: 30, rejected: 12 },
-                { key: '3', period: 'FY 2025-26 (YTD)', issued: 279, verified: 258, pending: 16, rejected: 5 },
+                { key: '1', period: 'FY 2023-24', issued: 4100 },
+                { key: '2', period: 'FY 2024-25', issued: 5200 },
+                { key: '3', period: 'FY 2025-26 (YTD)', issued: 6607 },
               ]
           }
           pagination={false}

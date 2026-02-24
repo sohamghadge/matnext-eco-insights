@@ -437,11 +437,7 @@ const masterScrapDispatchDetails: ScrapDispatchDetails[] = [
 export const scrapDispatchDetails = masterScrapDispatchDetails;
 
 export const getScrapDispatchDetails = (filters: FilterState): ScrapDispatchDetails[] => {
-  const prorationFactor = getProrationFactor(filters);
-  return masterScrapDispatchDetails.map(d => ({
-    ...d,
-    value: Number((d.value * prorationFactor).toFixed(1))
-  }));
+  return masterScrapDispatchDetails;
 };
 
 // MSIL Components Dispatch Details (Target vs Actual)

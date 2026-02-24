@@ -351,9 +351,9 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
         return (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <Tag color={met ? 'success' : pctOfTarget >= 80 ? 'warning' : 'error'}>
+              {/* <Tag color={met ? 'success' : pctOfTarget >= 80 ? 'warning' : 'error'}>
                 {met ? 'MET' : `${pctOfTarget.toFixed(0)}% of target`}
-              </Tag>
+              </Tag> */}
             </div>
             <Progress
               percent={record.recycledContentPercent * 100}

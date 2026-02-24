@@ -631,7 +631,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
             Certificates of Analysis (COA)
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Access the latest material purity and compliance reports uploaded to the FE directory.
+            Access the latest COA files.
           </p>
         </div>
         <Button

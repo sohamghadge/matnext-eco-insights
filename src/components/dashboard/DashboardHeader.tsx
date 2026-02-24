@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Select, DatePicker, Tag, Button, notification } from 'antd';
-import { Leaf, Settings, Eye } from 'lucide-react';
+import { Select, DatePicker, Tag, Button } from 'antd';
+import { Settings, Eye, Download } from 'lucide-react';
 import { FilterState, filterOptions } from '@/data/dashboardData';
 import { SetTargetsModal, ViewTargetsModal } from './TargetsModal';
 import dayjs, { Dayjs } from 'dayjs';
@@ -9,34 +9,18 @@ interface DashboardHeaderProps {
   filters: FilterState;
   onFilterChange: (key: keyof FilterState, value: string | string[] | Date) => void;
   activeTab?: string;
+  customTargets: { material: string; fy: string; unit: string; target: number }[];
+  onSaveTarget: (target: { material: string; fy: string; unit: string; target: number }) => void;
 }
 
-const DashboardHeader = ({ filters, onFilterChange, activeTab }: DashboardHeaderProps) => {
+const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, onSaveTarget }: DashboardHeaderProps) => {
   const [setTargetsOpen, setSetTargetsOpen] = useState(false);
   const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
-  const [customTargets, setCustomTargets] = useState<{ material: string; fy: string; unit: string; target: number }[]>([]);
 
   const handleDateChange = (key: 'dateFrom' | 'dateTo', date: Dayjs | null) => {
     if (date) {
       onFilterChange(key, date.toDate());
     }
-  };
-
-  const handleSaveTarget = (target: { material: string; fy: string; unit: string; target: number }) => {
-    setCustomTargets(prev => [...prev, target]);
-
-    notification.success({
-      message: 'Target Set Successfully',
-      description: `Target for ${target.material} has been updated for ${target.fy}.`,
-      placement: 'topRight',
-      className: '!bg-emerald-50 !border-emerald-200',
-      style: {
-        border: '1px solid #a7f3d0',
-        borderRadius: '12px',
-      },
-      icon: <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center -ml-2"><Leaf className="w-4 h-4 text-emerald-600" /></div>,
-      duration: 4,
-    });
   };
 
   return (
@@ -158,6 +142,21 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab }: DashboardHeader
                 >
                   View Targets
                 </Button>
+                <Button
+                  type="default"
+                  icon={<Download className="w-4 h-4" />}
+                  onClick={() => {
+                    import('@/utils/exportUtils').then(mod => {
+                      mod.exportToCSV(
+                        [{ 'Export': 'Dashboard data exported with current filters applied', 'Date': new Date().toISOString(), 'Plant': filters.plant, 'Market': filters.targetMarket }],
+                        'Dashboard_Export',
+                        filters
+                      );
+                    });
+                  }}
+                >
+                  Export
+                </Button>
               </>
             )}
           </div>
@@ -168,7 +167,7 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab }: DashboardHeader
       <SetTargetsModal
         open={setTargetsOpen}
         onClose={() => setSetTargetsOpen(false)}
-        onSave={handleSaveTarget}
+        onSave={onSaveTarget}
       />
       <ViewTargetsModal
         open={viewTargetsOpen}

@@ -1,4 +1,4 @@
-import { Card, Row, Col, Typography, Tag, Progress, Statistic, Table, Button, Modal, Select, Space, Input } from 'antd';
+import { Card, Row, Col, Typography, Tag, Progress, Statistic, Table, Button, Modal, Select, Space, Input, notification } from 'antd';
 import { Car, CheckCircle, AlertTriangle, Calendar, ChevronRight, Info, ImageOff, Globe, Filter, Search, Recycle, Settings } from 'lucide-react';
 import { RegulatoryData, ComplianceStat, Regulation, ModelComplianceData, PartComplianceData, EPRPartData } from '@/data/regulatoryData';
 import { useState, useMemo } from 'react';
@@ -95,63 +95,56 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
     // Regulations Table Columns
     const regulationColumns = [
         {
-            title: 'Regulation Name',
-            dataIndex: 'name',
-            key: 'name',
-            width: 250,
-            render: (text: string, record: Regulation) => (
+            title: 'Regulation',
+            key: 'regulation',
+            width: 280,
+            render: (_: any, record: Regulation) => (
                 <div>
-                    <div className="font-semibold text-gray-800">{text}</div>
-                    <div className="text-xs text-gray-500">{record.formalName}</div>
+                    <div className="font-semibold text-gray-800 text-xs">{record.formalName}</div>
+                    <div className="text-[11px] text-gray-500 mt-0.5">{record.description}</div>
                 </div>
             ),
         },
         {
-            title: 'Region',
+            title: 'Country',
             dataIndex: 'country',
             key: 'country',
-            width: 100,
-            render: (text: string) => <Tag>{text}</Tag>
-        },
-        {
-            title: 'Description',
-            dataIndex: 'description',
-            key: 'description',
-            ellipsis: true,
+            width: 80,
+            render: (text: string) => <Tag color={text === 'EU' ? 'blue' : 'green'}>{text}</Tag>
         },
         {
             title: 'Deadline',
             dataIndex: 'deadline',
             key: 'deadline',
-            width: 120,
-        },
-        {
-            title: 'Target vs Achieved',
-            key: 'target',
-            width: 200,
-            render: (_: any, record: Regulation) => (
-                <div className="flex flex-col text-xs">
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Target:</span>
-                        <span className="font-medium">{record.quantitativeTarget || '-'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Achieved:</span>
-                        <span className={`font-medium ${record.status === 'Compliant' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                            {record.quantitativeAchieved || '-'}
-                        </span>
-                    </div>
-                </div>
-            )
+            width: 140,
+            render: (text: string) => <span className="text-xs font-medium">{text}</span>
         },
         {
             title: 'Impact',
             dataIndex: 'impact',
             key: 'impact',
-            width: 100,
+            width: 80,
             render: (impact: string) => (
                 <Tag color={impact === 'High' ? 'red' : impact === 'Medium' ? 'orange' : 'blue'}>{impact}</Tag>
             ),
+        },
+        {
+            title: 'Quantitative Target',
+            dataIndex: 'quantitativeTarget',
+            key: 'quantitativeTarget',
+            width: 200,
+            render: (text: string) => <span className="text-xs text-gray-700 font-medium">{text || '-'}</span>
+        },
+        {
+            title: 'Achieved',
+            dataIndex: 'quantitativeAchieved',
+            key: 'quantitativeAchieved',
+            width: 160,
+            render: (text: string, record: Regulation) => (
+                <span className={`text-xs font-semibold ${record.status === 'Compliant' ? 'text-emerald-600' : record.status === 'Non-Compliant' ? 'text-red-600' : 'text-amber-600'}`}>
+                    {text || '-'}
+                </span>
+            )
         },
         {
             title: 'Status',
@@ -174,53 +167,44 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             title: 'Model',
             dataIndex: 'name',
             key: 'name',
-            width: 250,
+            width: 200,
+            fixed: 'left' as const,
             render: (text: string, record: ModelComplianceData) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-8 rounded shadow-sm bg-gray-100 overflow-hidden relative">
-                        <img
-                            src={record.image}
-                            alt={text}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                                const fallback = document.createElement('div');
-                                fallback.innerHTML = '<span class="text-xs text-gray-500">N/A</span>';
-                                e.currentTarget.parentElement?.appendChild(fallback);
-                            }}
-                        />
+                <div className="flex items-center gap-2">
+                    <div className="w-10 h-7 rounded shadow-sm bg-gray-100 overflow-hidden">
+                        <img src={record.image} alt={text} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     </div>
                     <div>
-                        <div className="font-medium text-gray-700">{text}</div>
+                        <div className="font-medium text-gray-700 text-xs">{text}</div>
                         <Tag className="text-[10px] m-0">{record.type}</Tag>
                     </div>
                 </div>
             ),
         },
         {
-            title: 'Part Count Split',
-            key: 'partSplit',
+            title: 'Total Parts',
+            dataIndex: 'partCountTotal',
+            key: 'partCountTotal',
+            width: 80,
+            render: (val: number) => <span className="font-semibold">{val}</span>
+        },
+        {
+            title: 'Steel/Iron Parts',
+            key: 'steelParts',
+            width: 120,
             render: (_: any, record: ModelComplianceData) => (
                 <div className="text-xs">
-                    <div>Total: <span className="font-semibold">{record.partCountTotal}</span></div>
-                    <div className="text-gray-500">St: {record.partCountSteel} | Al: {record.partCountAl}</div>
+                    <Tag color="default">{record.compliantPartCountSteel}/{record.partCountSteel}</Tag>
                 </div>
             )
         },
         {
-            title: 'Ratio (Vol/Comp)',
-            key: 'ratio',
+            title: 'Al Parts',
+            key: 'alParts',
+            width: 100,
             render: (_: any, record: ModelComplianceData) => (
                 <div className="text-xs">
-                    <div className="flex justify-between w-24">
-                        <span>Steel:</span>
-                        <span className="font-medium">{(record.volumePartCompliantSteel / record.volumePartCountSteel * 100).toFixed(0)}%</span>
-                    </div>
-                    <div className="flex justify-between w-24">
-                        <span>Al:</span>
-                        <span className="font-medium">{(record.volumePartCompliantAl / record.volumePartCountAl * 100).toFixed(0)}%</span>
-                    </div>
+                    <Tag color="default">{record.compliantPartCountAl}/{record.partCountAl}</Tag>
                 </div>
             )
         },
@@ -228,14 +212,44 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             title: 'Exp. Count',
             dataIndex: 'exportVehicleCount',
             key: 'exportVehicleCount',
-            render: (val: number) => <span className="font-semibold">{val?.toLocaleString()}</span>
+            width: 90,
+            render: (val: number) => <span className="font-semibold text-xs">{val?.toLocaleString()}</span>
         },
         {
-            title: 'Readiness',
+            title: 'Volume Ratio (Steel)',
+            key: 'volSteel',
+            width: 140,
+            render: (_: any, record: ModelComplianceData) => {
+                const pct = (record.volumePartCompliantSteel / record.volumePartCountSteel * 100);
+                return (
+                    <div className="text-xs">
+                        <div>{(record.volumePartCompliantSteel / 1000).toFixed(0)}k / {(record.volumePartCountSteel / 1000).toFixed(0)}k</div>
+                        <Progress percent={pct} size="small" showInfo={false} strokeColor={pct >= 90 ? '#10b981' : '#f59e0b'} />
+                    </div>
+                );
+            }
+        },
+        {
+            title: 'Volume Ratio (Al)',
+            key: 'volAl',
+            width: 130,
+            render: (_: any, record: ModelComplianceData) => {
+                const pct = (record.volumePartCompliantAl / record.volumePartCountAl * 100);
+                return (
+                    <div className="text-xs">
+                        <div>{(record.volumePartCompliantAl / 1000).toFixed(0)}k / {(record.volumePartCountAl / 1000).toFixed(0)}k</div>
+                        <Progress percent={pct} size="small" showInfo={false} strokeColor={pct >= 90 ? '#10b981' : '#f59e0b'} />
+                    </div>
+                );
+            }
+        },
+        {
+            title: 'CBAM Readiness',
             dataIndex: 'cbamReadiness',
             key: 'cbamReadiness',
+            width: 100,
             render: (val: number) => (
-                <div className="w-20">
+                <div className="w-16">
                     <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
                     <div className="text-xs text-right mt-0.5">{val}%</div>
                 </div>
@@ -245,17 +259,35 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             title: 'Calculation',
             dataIndex: 'cbamCalculation',
             key: 'cbamCalculation',
-            render: (text: string) => <Tag color="blue">{text}</Tag>
+            width: 120,
+            render: (text: string) => <Tag color="blue" className="text-[10px]">{text}</Tag>
         },
         {
-            title: 'Amount (EUR)',
+            title: 'CBAM Amount',
             dataIndex: 'cbamAmount',
             key: 'cbamAmount',
-            render: (val: number) => <span className="font-mono text-gray-700">€{val?.toLocaleString()}</span>
+            width: 100,
+            render: (val: number) => <span className="font-mono text-xs text-gray-700">€{val?.toLocaleString()}</span>
+        },
+        {
+            title: 'Reduction (Data)',
+            dataIndex: 'reductionDataMgmt',
+            key: 'reductionDataMgmt',
+            width: 100,
+            render: (val: number) => <span className="font-mono text-xs text-emerald-600">€{val?.toLocaleString()}</span>
+        },
+        {
+            title: 'Reduction (Sust.)',
+            dataIndex: 'reductionSustainable',
+            key: 'reductionSustainable',
+            width: 100,
+            render: (val: number) => <span className="font-mono text-xs text-emerald-600">€{val?.toLocaleString()}</span>
         },
         {
             title: 'Action',
             key: 'action',
+            width: 100,
+            fixed: 'right' as const,
             render: (_: any, record: ModelComplianceData) => (
                 <Button size="small" type="link" onClick={() => setSelectedModel(record)}>
                     View Details
@@ -318,34 +350,38 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
     // Common Render for EPR Parts
     const eprPartColumns = (type: 'Recovery' | 'Recycling') => [
         {
-            title: 'Part ID',
-            dataIndex: 'partId',
-            key: 'partId',
-            render: (text: string) => <span className="font-mono text-xs text-gray-500">{text || 'N/A'}</span>
-        },
-        {
             title: 'Part Name',
             dataIndex: 'name',
             key: 'name',
-            render: (text: string) => <span className="font-medium text-gray-700">{text}</span>
+            width: 160,
+            render: (text: string) => <span className="font-medium text-gray-700 text-xs">{text}</span>
+        },
+        {
+            title: 'Part ID',
+            dataIndex: 'partId',
+            key: 'partId',
+            width: 100,
+            render: (text: string) => <span className="font-mono text-[11px] text-gray-500">{text || 'N/A'}</span>
         },
         {
             title: 'Material / Grade',
             key: 'material',
+            width: 130,
             render: (_: any, record: EPRPartData) => (
                 <div className="flex flex-col">
-                    <span className="text-gray-800 font-medium">{record.material}</span>
-                    <span className="text-xs text-gray-500">{record.grade}</span>
+                    <span className="text-gray-800 font-medium text-xs">{record.material}</span>
+                    <span className="text-[10px] text-gray-500">{record.grade}</span>
                 </div>
             )
         },
         {
-            title: type === 'Recovery' ? 'Recoverability Rate' : 'Recyclability Rate',
+            title: type === 'Recovery' ? 'Recovery Rate' : 'Recycling Rate',
             dataIndex: 'rate',
             key: 'rate',
+            width: 120,
             render: (val: number, record: EPRPartData) => (
                 <div>
-                    <div className="font-semibold text-gray-800">{val}%</div>
+                    <div className="font-semibold text-gray-800 text-xs">{val}%</div>
                     <div className="text-[10px] text-gray-500">
                         Target: <span className="font-medium">{record.benchmark}%</span>
                     </div>
@@ -356,16 +392,18 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             title: 'Exp. Qty',
             dataIndex: 'exportQty',
             key: 'exportQty',
-            render: (val: number) => <span className="text-gray-700">{val?.toLocaleString() || '-'}</span>
+            width: 80,
+            render: (val: number) => <span className="text-gray-700 text-xs">{val?.toLocaleString() || '-'}</span>
         },
         {
             title: 'Readiness',
             dataIndex: 'cbamReadiness',
             key: 'cbamReadiness',
+            width: 90,
             render: (val: number) => (
-                <div className="w-20">
+                <div className="w-16">
                     <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
-                    <div className="text-xs text-right mt-0.5">{val ?? '-'}%</div>
+                    <div className="text-[10px] text-right mt-0.5">{val ?? '-'}%</div>
                 </div>
             )
         },
@@ -373,18 +411,52 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
             title: 'Calculation',
             dataIndex: 'cbamCalculation',
             key: 'cbamCalculation',
-            render: (text: string) => <Tag color="blue">{text || '-'}</Tag>
+            width: 110,
+            render: (text: string) => <Tag color="blue" className="text-[10px]">{text || '-'}</Tag>
         },
         {
-            title: 'Amount (EUR)',
+            title: 'Amount',
             dataIndex: 'cbamAmount',
             key: 'cbamAmount',
-            render: (val: number) => <span className="font-mono text-gray-700">{val ? `€${val.toLocaleString()}` : '-'}</span>
+            width: 90,
+            render: (val: number) => <span className="font-mono text-xs text-gray-700">{val ? `€${val.toLocaleString()}` : '-'}</span>
+        },
+        {
+            title: 'Red. (Data)',
+            dataIndex: 'reductionDataMgmt',
+            key: 'reductionDataMgmt',
+            width: 90,
+            render: (val: number) => <span className="font-mono text-xs text-emerald-600">{val ? `€${val.toLocaleString()}` : '-'}</span>
+        },
+        {
+            title: 'Red. (Sust.)',
+            dataIndex: 'reductionSustainable',
+            key: 'reductionSustainable',
+            width: 90,
+            render: (val: number) => <span className="font-mono text-xs text-emerald-600">{val ? `€${val.toLocaleString()}` : '-'}</span>
         },
         {
             title: 'Action',
             key: 'action',
-            render: (_: any) => <Button type="text" size="small" className="text-blue-600">Edit</Button>
+            width: 90,
+            render: (_: any, record: EPRPartData) => (
+                <Button type="text" size="small" className="text-blue-600" onClick={() => {
+                    Modal.confirm({
+                        title: 'Raise Issue Ticket',
+                        content: (
+                            <div className="mt-2 text-sm text-gray-600">
+                                <p>Create an Issue Management ticket for <strong>{record.name}</strong> ({record.partId})?</p>
+                                <p className="mt-1 text-xs text-gray-500">Material: {record.material} | Rate: {record.rate}% (Target: {record.benchmark}%)</p>
+                            </div>
+                        ),
+                        okText: 'Create Ticket',
+                        okButtonProps: { className: 'bg-[#5a7a32] hover:bg-[#4b6a28]' },
+                        onOk: () => { notification.success({ message: 'Issue Ticket Created', description: `Ticket raised for ${record.name} (${record.partId}).`, placement: 'topRight' }); },
+                    });
+                }}>
+                    Raise Issue
+                </Button>
+            )
         }
     ];
 
@@ -406,64 +478,107 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
 
     const partColumns = [
         {
-            title: 'Part ID',
-            dataIndex: 'partId',
-            key: 'partId',
-            render: (text: string) => <span className="font-mono text-xs text-gray-500">{text || 'N/A'}</span>
-        },
-        {
             title: 'Part Name',
             dataIndex: 'name',
             key: 'name',
+            width: 160,
             render: (text: string, record: PartComplianceData) => (
                 <div>
-                    <div className="font-medium text-gray-800">{text}</div>
+                    <div className="font-medium text-gray-800 text-xs">{text}</div>
                     <div className="text-[10px] text-gray-500">{record.supplier}</div>
                 </div>
             ),
         },
         {
+            title: 'Part No.',
+            dataIndex: 'partId',
+            key: 'partId',
+            width: 100,
+            render: (text: string) => <span className="font-mono text-[11px] text-gray-500">{text || 'N/A'}</span>
+        },
+        {
+            title: 'Total Count',
+            dataIndex: 'exportQty',
+            key: 'exportQty',
+            width: 90,
+            render: (val: number) => <span className="text-gray-700 text-xs font-semibold">{val?.toLocaleString() || '-'}</span>
+        },
+        {
             title: 'Material / Grade',
             key: 'material',
+            width: 130,
             render: (_: any, record: PartComplianceData) => (
                 <div>
-                    <Tag className="mr-0 mb-1">{record.material}</Tag>
+                    <Tag className="mr-0 mb-1 text-[10px]">{record.material}</Tag>
                     <div className="text-[10px] text-gray-500">{record.grade}</div>
                 </div>
             )
         },
         {
-            title: 'Exp. Count',
-            dataIndex: 'exportQty',
-            key: 'exportQty',
-            render: (val: number) => <span className="text-gray-700">{val?.toLocaleString() || '-'}</span>
-        },
-        {
-            title: 'Readiness',
+            title: 'CBAM Readiness',
             dataIndex: 'cbamReadiness',
             key: 'cbamReadiness',
+            width: 100,
             render: (val: number) => {
                 if (val === undefined) return <span className="text-gray-400">-</span>;
-                let color = val >= 90 ? 'text-emerald-600' : val >= 70 ? 'text-amber-600' : 'text-red-600';
-                return <span className={`font-bold ${color}`}>{val}%</span>;
+                return (
+                    <div className="w-16">
+                        <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
+                        <div className="text-[10px] text-right mt-0.5">{val}%</div>
+                    </div>
+                );
             }
         },
         {
             title: 'Calculation',
             dataIndex: 'cbamCalculation',
             key: 'cbamCalculation',
-            render: (val: string) => val ? <span className="text-xs bg-gray-100 px-1 py-0.5 rounded">{val}</span> : '-'
+            width: 110,
+            render: (val: string) => val ? <Tag color="blue" className="text-[10px]">{val}</Tag> : <span className="text-gray-400">-</span>
         },
         {
-            title: 'Amount (EUR)',
+            title: 'CBAM Amount',
             dataIndex: 'cbamAmount',
             key: 'cbamAmount',
-            render: (val: number) => val ? <span className="font-mono text-xs">€{val.toLocaleString()}</span> : '-'
+            width: 100,
+            render: (val: number) => val ? <span className="font-mono text-xs">€{val.toLocaleString()}</span> : <span className="text-gray-400">-</span>
+        },
+        {
+            title: 'Red. (Data)',
+            dataIndex: 'reductionDataMgmt',
+            key: 'reductionDataMgmt',
+            width: 90,
+            render: (val: number) => <span className="font-mono text-xs text-emerald-600">{val ? `€${val.toLocaleString()}` : '-'}</span>
+        },
+        {
+            title: 'Red. (Sust.)',
+            dataIndex: 'reductionSustainable',
+            key: 'reductionSustainable',
+            width: 90,
+            render: (val: number) => <span className="font-mono text-xs text-emerald-600">{val ? `€${val.toLocaleString()}` : '-'}</span>
         },
         {
             title: 'Action',
             key: 'action',
-            render: (_: any) => <Button type="text" size="small" className="text-blue-600">Edit</Button>
+            width: 90,
+            render: (_: any, record: PartComplianceData) => (
+                <Button type="text" size="small" className="text-blue-600" onClick={() => {
+                    Modal.confirm({
+                        title: 'Raise Issue Ticket',
+                        content: (
+                            <div className="mt-2 text-sm text-gray-600">
+                                <p>Create an Issue Management ticket for <strong>{record.name}</strong> ({record.partId})?</p>
+                                <p className="mt-1 text-xs text-gray-500">Material: {record.material} | Grade: {record.grade}</p>
+                            </div>
+                        ),
+                        okText: 'Create Ticket',
+                        okButtonProps: { className: 'bg-[#5a7a32] hover:bg-[#4b6a28]' },
+                        onOk: () => { notification.success({ message: 'Issue Ticket Created', description: `Ticket raised for ${record.name} (${record.partId}).`, placement: 'topRight' }); },
+                    });
+                }}>
+                    Raise Issue
+                </Button>
+            )
         }
     ];
 
@@ -492,27 +607,65 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                 </Col>
             </Row>
 
-            {/* 3. CBAM Context & Education (Purple Box) */}
-            <div className="bg-purple-50 border border-purple-100 rounded-lg p-6 shadow-sm">
+            {/* 3. CBAM Context & Education */}
+            <div className="bg-purple-50 border border-purple-100 rounded-xl p-6 shadow-sm">
                 <div className="flex items-start gap-4">
                     <div className="bg-purple-100 p-3 rounded-full shrink-0">
                         <Globe className="w-6 h-6 text-purple-600" />
                     </div>
-                    <div>
-                        <h3 className="text-lg font-semibold text-purple-900 mb-2">EU Carbon Border Adjustment Mechanism (CBAM) Compliance</h3>
-                        <p className="text-purple-800 mb-4 leading-relaxed max-w-4xl">
-                            The Carbon Border Adjustment Mechanism (CBAM) is the EU's tool to put a fair price on the carbon emitted during the production of carbon-intensive goods that are entering the EU, and to encourage cleaner industrial production in non-EU countries.
-                            <br /><br />
-                            <strong>Key Impact Areas for Automotive:</strong>
-                            <ul className="list-disc list-inside mt-2 ml-2 space-y-1">
-                                <li><strong>Covered Materials:</strong> Iron, Steel, Aluminum, and downstream products (screws, bolts, structures).</li>
-                                <li><strong>Reporting Obligations:</strong> Importers must report "embedded emissions" (Direct + Indirect) quarterly.</li>
-                                <li><strong>Financial Impact (2026+):</strong> Purchase of CBAM certificates will be mandatory for emissions exceeding EU benchmarks.</li>
-                            </ul>
-                        </p>
-                        <div className="flex gap-4 mt-4">
-                            <Tag color="purple" className="px-3 py-1 text-sm">Phase: Transitional</Tag>
-                            <Tag color="cyan" className="px-3 py-1 text-sm">Next Reporting: 31 Oct 2026</Tag>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-purple-900 mb-3">EU Carbon Border Adjustment Mechanism (CBAM)</h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="bg-white/60 rounded-lg p-4 border border-purple-100">
+                                <h4 className="text-sm font-bold text-purple-800 mb-2">Phase 1 — Transitional (Oct 2023 – Dec 2025)</h4>
+                                <p className="text-xs text-purple-700 leading-relaxed">
+                                    Reporting-only phase. EU importers must report embedded emissions quarterly for covered goods: <strong>Cement, Iron & Steel, Aluminium, Fertilisers, Electricity, Hydrogen</strong>. No financial obligations yet.
+                                </p>
+                            </div>
+                            <div className="bg-white/60 rounded-lg p-4 border border-purple-100">
+                                <h4 className="text-sm font-bold text-purple-800 mb-2">Phase 2 — Financial (Jan 2026 – Dec 2027)</h4>
+                                <p className="text-xs text-purple-700 leading-relaxed">
+                                    EU importers must purchase <strong>CBAM certificates</strong> based on embedded emissions exceeding EU ETS benchmarks. Free allowances phase out gradually. Applies to raw materials and basic processed goods.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-amber-50 rounded-lg p-4 border border-amber-200 mb-4">
+                            <h4 className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4" /> Jan 2028 Onwards — Automotive Components
+                            </h4>
+                            <p className="text-xs text-amber-700 leading-relaxed">
+                                CBAM scope extends to <strong>downstream products including automotive components</strong> containing CBAM-covered materials (Steel, Aluminium, Iron). OEMs exporting vehicles with these parts to the EU must ensure complete emissions data traceability. By translation, <strong>any OEM using these parts in EU-bound vehicles becomes liable</strong> for CBAM certificate costs.
+                            </p>
+                        </div>
+
+                        <div className="bg-white/60 rounded-lg p-4 border border-purple-100">
+                            <h4 className="text-sm font-bold text-purple-800 mb-2">Quantitative Targets (EU Benchmarks)</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-purple-900">≤ 1.9</div>
+                                    <div className="text-[10px] text-purple-600">tCO2e/t — Steel</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-purple-900">≤ 4.2</div>
+                                    <div className="text-[10px] text-purple-600">tCO2e/t — Aluminium</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-purple-900">≤ 1.5</div>
+                                    <div className="text-[10px] text-purple-600">tCO2e/t — Iron</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-purple-900">€93</div>
+                                    <div className="text-[10px] text-purple-600">avg/tCO2e — ETS Price</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 mt-4">
+                            <Tag color="purple" className="px-3 py-1 text-sm">Current Phase: Transitional</Tag>
+                            <Tag color="orange" className="px-3 py-1 text-sm">Financial Phase: Jan 2026</Tag>
+                            <Tag color="red" className="px-3 py-1 text-sm">Auto Components: Jan 2028</Tag>
                         </div>
                     </div>
                 </div>
@@ -526,12 +679,32 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                         className="shadow-sm border-gray-200"
                         headStyle={{ borderBottom: '1px solid #f0f0f0' }}
                     >
+                        {/* Vehicle Mini Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                                <div className="text-xs text-gray-500 uppercase font-semibold">Total Models</div>
+                                <div className="text-xl font-bold text-gray-800">{data.models.length}</div>
+                            </div>
+                            <div className="bg-emerald-50 p-3 rounded border border-emerald-100">
+                                <div className="text-xs text-emerald-600 uppercase font-semibold">Compliant</div>
+                                <div className="text-xl font-bold text-emerald-700">{data.models.filter(m => m.cbamReadiness >= 90).length}</div>
+                            </div>
+                            <div className="bg-amber-50 p-3 rounded border border-amber-100">
+                                <div className="text-xs text-amber-600 uppercase font-semibold">At Risk</div>
+                                <div className="text-xl font-bold text-amber-700">{data.models.filter(m => m.cbamReadiness < 90).length}</div>
+                            </div>
+                            <div className="bg-purple-50 p-3 rounded border border-purple-100">
+                                <div className="text-xs text-purple-600 uppercase font-semibold">Total CBAM Liability</div>
+                                <div className="text-xl font-bold text-purple-700">€{data.models.reduce((s, m) => s + m.cbamAmount, 0).toLocaleString()}</div>
+                            </div>
+                        </div>
                         <Table
                             dataSource={data.models}
                             columns={modelColumns}
                             pagination={false}
                             size="small"
                             rowKey="id"
+                            scroll={{ x: 1800 }}
                         />
                     </Card>
                 </Col>
@@ -613,18 +786,30 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                 </div>
 
                 {/* 3.1 Recovery Context */}
-                <Card className="bg-blue-50 border-blue-100 shadow-sm">
+                <Card className="bg-blue-50 border-blue-100 shadow-sm rounded-xl">
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className="flex-1">
-                            <h4 className="flex items-center gap-2 text-blue-900 font-bold text-lg mb-2">
-                                <Info className="w-5 h-5" /> Energy Recovery + Recycling
+                            <h4 className="flex items-center gap-2 text-blue-900 font-bold text-lg mb-3">
+                                <Info className="w-5 h-5" /> EPR Recovery — Energy Recovery + Recycling
                             </h4>
                             <p className="text-gray-700 text-sm leading-relaxed">
-                                <strong>Recoverability</strong> refers to the potential specifically to recover energy from waste (incineration with energy recovery) PLUS material recycling.
+                                <strong>Recoverability</strong> refers to the potential to recover energy from waste (incineration with energy recovery) PLUS material recycling. Under ELV Directive & AIS-129, vehicles must achieve a minimum <strong>95% Recoverability Rate</strong> by weight.
                             </p>
-                            <p className="text-gray-700 text-sm mt-2 leading-relaxed">
-                                Under ELV Directive & AIS-129, vehicles must achieve a minimum <strong>95% Recoverability Rate</strong> by weight. This includes metal recycling and energy recovery from plastics/foams.
-                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                                <div className="bg-white/60 rounded-lg p-3 border border-blue-100">
+                                    <h5 className="text-xs font-bold text-blue-800 mb-1">ELV Steel Recovery (EPR)</h5>
+                                    <p className="text-[11px] text-blue-700">8% (2025-30) → 13% (2030-35) → 18% (2035+)</p>
+                                </div>
+                                <div className="bg-white/60 rounded-lg p-3 border border-blue-100">
+                                    <h5 className="text-xs font-bold text-blue-800 mb-1">Battery Waste Collection</h5>
+                                    <p className="text-[11px] text-blue-700">Lead Acid: 90% (2026+) | Li-Ion: 70% (2029+)</p>
+                                </div>
+                                <div className="bg-white/60 rounded-lg p-3 border border-blue-100">
+                                    <h5 className="text-xs font-bold text-blue-800 mb-1">Plastic Waste Collection</h5>
+                                    <p className="text-[11px] text-blue-700">Cat I: 80% (2027+) | Cat II/III: 60% (2027+)</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </Card>
@@ -636,78 +821,77 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                             <Car className="w-4 h-4 text-gray-600" /> Vehicle Wise Recovery Status
                         </h4>
                     </div>
+
+                    {/* Vehicle Mini Cards */}
+                    {(() => {
+                        const legacyModels = data.models.filter(m => m.generation === 'Legacy');
+                        return (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                                    <div className="text-xs text-gray-500 uppercase font-semibold">Total Models</div>
+                                    <div className="text-xl font-bold text-gray-800">{legacyModels.length}</div>
+                                </div>
+                                <div className="bg-emerald-50 p-3 rounded border border-emerald-100">
+                                    <div className="text-xs text-emerald-600 uppercase font-semibold">Compliant</div>
+                                    <div className="text-xl font-bold text-emerald-700">{legacyModels.filter(m => m.eprRecovery?.status === 'Compliant').length}</div>
+                                </div>
+                                <div className="bg-amber-50 p-3 rounded border border-amber-100">
+                                    <div className="text-xs text-amber-600 uppercase font-semibold">Warning</div>
+                                    <div className="text-xl font-bold text-amber-700">{legacyModels.filter(m => m.eprRecovery?.status === 'Warning').length}</div>
+                                </div>
+                                <div className="bg-red-50 p-3 rounded border border-red-100">
+                                    <div className="text-xs text-red-600 uppercase font-semibold">Non-Compliant</div>
+                                    <div className="text-xl font-bold text-red-700">{legacyModels.filter(m => m.eprRecovery?.status === 'Non-Compliant').length}</div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     <Table
-                        dataSource={data.models.filter(m => m.generation === 'Legacy')} // Only Legacy models for Recovery focus? Or all? Requirement says "Legacy (Recovery)" and "New (Recycling)"
+                        dataSource={data.models.filter(m => m.generation === 'Legacy')}
                         rowKey="id"
                         pagination={false}
                         size="small"
+                        scroll={{ x: 1600 }}
                         columns={[
                             {
                                 title: 'Model',
                                 dataIndex: 'name',
                                 key: 'name',
-                                width: 250,
+                                width: 200,
+                                fixed: 'left' as const,
                                 render: (text: string, record: ModelComplianceData) => (
                                     <div className="flex items-center gap-2">
-                                        <div className="w-12 h-8 rounded shadow-sm bg-gray-100 overflow-hidden relative">
+                                        <div className="w-10 h-7 rounded shadow-sm bg-gray-100 overflow-hidden">
                                             <img src={record.image} alt={text} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                         </div>
                                         <div>
-                                            <div className="font-medium text-gray-700">{text}</div>
+                                            <div className="font-medium text-gray-700 text-xs">{text}</div>
                                             <Tag className="text-[10px] m-0">{record.type}</Tag>
                                         </div>
                                     </div>
                                 ),
                             },
-                            {
-                                title: 'Part Count Split',
-                                key: 'partSplit',
-                                render: (_: any, record: ModelComplianceData) => (
-                                    <div className="text-xs">
-                                        <div>Total: <span className="font-semibold">{record.partCountTotal}</span></div>
-                                        <div className="text-gray-500">St: {record.partCountSteel} | Al: {record.partCountAl}</div>
-                                    </div>
-                                )
-                            },
+                            { title: 'Total Parts', dataIndex: 'partCountTotal', key: 'partCountTotal', width: 80, render: (val: number) => <span className="font-semibold">{val}</span> },
+                            { title: 'Steel/Iron', key: 'steelParts', width: 100, render: (_: any, r: ModelComplianceData) => <Tag color="default" className="text-[10px]">{r.compliantPartCountSteel}/{r.partCountSteel}</Tag> },
+                            { title: 'Al Parts', key: 'alParts', width: 90, render: (_: any, r: ModelComplianceData) => <Tag color="default" className="text-[10px]">{r.compliantPartCountAl}/{r.partCountAl}</Tag> },
                             {
                                 title: 'Recovery Rate',
                                 key: 'recoveryRate',
+                                width: 120,
                                 render: (_: any, record: ModelComplianceData) => (
                                     <div>
-                                        <div className="font-bold">{record.eprRecovery?.actual ?? '-'}%</div>
+                                        <div className="font-bold text-xs">{record.eprRecovery?.actual ?? '-'}%</div>
                                         <div className="text-[10px] text-gray-500">Target: {record.eprRecovery?.target ?? '-'}%</div>
                                     </div>
                                 )
                             },
-                            {
-                                title: 'Exp. Count',
-                                dataIndex: 'exportVehicleCount',
-                                key: 'exportVehicleCount',
-                                render: (val: number) => <span className="font-semibold">{val?.toLocaleString()}</span>
-                            },
-                            {
-                                title: 'Readiness',
-                                dataIndex: 'cbamReadiness',
-                                key: 'cbamReadiness',
-                                render: (val: number) => (
-                                    <div className="w-20">
-                                        <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
-                                        <div className="text-xs text-right mt-0.5">{val}%</div>
-                                    </div>
-                                )
-                            },
-                            {
-                                title: 'Calculation',
-                                dataIndex: 'cbamCalculation',
-                                key: 'cbamCalculation',
-                                render: (text: string) => <Tag color="blue">{text}</Tag>
-                            },
-                            {
-                                title: 'Amount (EUR)',
-                                dataIndex: 'cbamAmount',
-                                key: 'cbamAmount',
-                                render: (val: number) => <span className="font-mono text-gray-700">€{val?.toLocaleString()}</span>
-                            },
+                            { title: 'Exp. Count', dataIndex: 'exportVehicleCount', key: 'exportVehicleCount', width: 90, render: (val: number) => <span className="font-semibold text-xs">{val?.toLocaleString()}</span> },
+                            { title: 'CBAM Readiness', dataIndex: 'cbamReadiness', key: 'cbamReadiness', width: 100, render: (val: number) => (<div className="w-16"><Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} /><div className="text-[10px] text-right mt-0.5">{val}%</div></div>) },
+                            { title: 'Calculation', dataIndex: 'cbamCalculation', key: 'cbamCalculation', width: 110, render: (text: string) => <Tag color="blue" className="text-[10px]">{text}</Tag> },
+                            { title: 'Amount', dataIndex: 'cbamAmount', key: 'cbamAmount', width: 100, render: (val: number) => <span className="font-mono text-xs text-gray-700">€{val?.toLocaleString()}</span> },
+                            { title: 'Red. (Data)', dataIndex: 'reductionDataMgmt', key: 'reductionDataMgmt', width: 90, render: (val: number) => <span className="font-mono text-xs text-emerald-600">€{val?.toLocaleString()}</span> },
+                            { title: 'Red. (Sust.)', dataIndex: 'reductionSustainable', key: 'reductionSustainable', width: 90, render: (val: number) => <span className="font-mono text-xs text-emerald-600">€{val?.toLocaleString()}</span> },
                         ]}
                     />
                 </div>
@@ -746,6 +930,7 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                                 <Option value="alto">Alto K10</Option>
                                 <Option value="wagonr">Wagon R</Option>
                                 <Option value="swift">Swift</Option>
+                                <Option value="swiftdzire">Swift Dzire</Option>
                             </Select>
                         </div>
 
@@ -775,6 +960,7 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                         columns={eprPartColumns('Recovery')}
                         pagination={{ pageSize: 8 }}
                         size="small"
+                        scroll={{ x: 1400 }}
                     />
                 </div>
             </div>
@@ -789,18 +975,34 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                 </div>
 
                 {/* 4.1 Recycling Context */}
-                <Card className="bg-green-50 border-green-100 shadow-sm">
+                <Card className="bg-green-50 border-green-100 shadow-sm rounded-xl">
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className="flex-1">
-                            <h4 className="flex items-center gap-2 text-green-900 font-bold text-lg mb-2">
-                                <Info className="w-5 h-5" /> Material Recycling Only
+                            <h4 className="flex items-center gap-2 text-green-900 font-bold text-lg mb-3">
+                                <Info className="w-5 h-5" /> EPR Recycling — Recycled Content Mandates
                             </h4>
                             <p className="text-gray-700 text-sm leading-relaxed">
-                                <strong>Recyclability</strong> refers strictly to the reprocessing of waste materials into products, materials, or substances (excluding energy recovery).
+                                <strong>Recyclability</strong> refers strictly to reprocessing waste into new products/materials (excluding energy recovery). The mandate requires a minimum <strong>85% Recyclability Rate</strong> by weight. Additionally, recycled content targets apply to new vehicle manufacturing.
                             </p>
-                            <p className="text-gray-700 text-sm mt-2 leading-relaxed">
-                                The mandate requires a minimum <strong>85% Recyclability Rate</strong> by weight. This is harder to achieve for composite plastics and glass.
-                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
+                                <div className="bg-white/60 rounded-lg p-3 border border-green-100">
+                                    <h5 className="text-xs font-bold text-green-800 mb-1">ELV Steel Recycled Content</h5>
+                                    <p className="text-[11px] text-green-700">5% (2027-28) → 10% → 15% → 20% (2030+)</p>
+                                </div>
+                                <div className="bg-white/60 rounded-lg p-3 border border-green-100">
+                                    <h5 className="text-xs font-bold text-green-800 mb-1">Battery Recycled Content</h5>
+                                    <p className="text-[11px] text-green-700">5% (2027-28) → 10% → 15% → 20% (2030+)</p>
+                                </div>
+                                <div className="bg-white/60 rounded-lg p-3 border border-green-100">
+                                    <h5 className="text-xs font-bold text-green-800 mb-1">Plastic Recycled Content</h5>
+                                    <p className="text-[11px] text-green-700">India: Upcoming | EU: 20% (15% from ELV) by 2030</p>
+                                </div>
+                                <div className="bg-white/60 rounded-lg p-3 border border-green-100">
+                                    <h5 className="text-xs font-bold text-green-800 mb-1">EU Plastic (ELV Reg.)</h5>
+                                    <p className="text-[11px] text-green-700">20% total, 15% from ELV sources by 2030</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </Card>
@@ -812,78 +1014,77 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                             <Car className="w-4 h-4 text-gray-600" /> Vehicle Wise Recycling Status
                         </h4>
                     </div>
+
+                    {/* Vehicle Mini Cards */}
+                    {(() => {
+                        const newModels = data.models.filter(m => m.generation === 'New');
+                        return (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                                    <div className="text-xs text-gray-500 uppercase font-semibold">Total Models</div>
+                                    <div className="text-xl font-bold text-gray-800">{newModels.length}</div>
+                                </div>
+                                <div className="bg-emerald-50 p-3 rounded border border-emerald-100">
+                                    <div className="text-xs text-emerald-600 uppercase font-semibold">Compliant</div>
+                                    <div className="text-xl font-bold text-emerald-700">{newModels.filter(m => m.eprRecycling?.status === 'Compliant').length}</div>
+                                </div>
+                                <div className="bg-amber-50 p-3 rounded border border-amber-100">
+                                    <div className="text-xs text-amber-600 uppercase font-semibold">Warning</div>
+                                    <div className="text-xl font-bold text-amber-700">{newModels.filter(m => m.eprRecycling?.status === 'Warning').length}</div>
+                                </div>
+                                <div className="bg-red-50 p-3 rounded border border-red-100">
+                                    <div className="text-xs text-red-600 uppercase font-semibold">Non-Compliant</div>
+                                    <div className="text-xl font-bold text-red-700">{newModels.filter(m => m.eprRecycling?.status === 'Non-Compliant').length}</div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     <Table
-                        dataSource={data.models.filter(m => m.generation === 'New')} // Only New models for Recycling focus?
+                        dataSource={data.models.filter(m => m.generation === 'New')}
                         rowKey="id"
                         pagination={false}
                         size="small"
+                        scroll={{ x: 1600 }}
                         columns={[
                             {
                                 title: 'Model',
                                 dataIndex: 'name',
                                 key: 'name',
-                                width: 250,
+                                width: 200,
+                                fixed: 'left' as const,
                                 render: (text: string, record: ModelComplianceData) => (
                                     <div className="flex items-center gap-2">
-                                        <div className="w-12 h-8 rounded shadow-sm bg-gray-100 overflow-hidden relative">
+                                        <div className="w-10 h-7 rounded shadow-sm bg-gray-100 overflow-hidden">
                                             <img src={record.image} alt={text} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                         </div>
                                         <div>
-                                            <div className="font-medium text-gray-700">{text}</div>
+                                            <div className="font-medium text-gray-700 text-xs">{text}</div>
                                             <Tag className="text-[10px] m-0">{record.type}</Tag>
                                         </div>
                                     </div>
                                 ),
                             },
-                            {
-                                title: 'Part Count Split',
-                                key: 'partSplit',
-                                render: (_: any, record: ModelComplianceData) => (
-                                    <div className="text-xs">
-                                        <div>Total: <span className="font-semibold">{record.partCountTotal}</span></div>
-                                        <div className="text-gray-500">St: {record.partCountSteel} | Al: {record.partCountAl}</div>
-                                    </div>
-                                )
-                            },
+                            { title: 'Total Parts', dataIndex: 'partCountTotal', key: 'partCountTotal', width: 80, render: (val: number) => <span className="font-semibold">{val}</span> },
+                            { title: 'Steel/Iron', key: 'steelParts', width: 100, render: (_: any, r: ModelComplianceData) => <Tag color="default" className="text-[10px]">{r.compliantPartCountSteel}/{r.partCountSteel}</Tag> },
+                            { title: 'Al Parts', key: 'alParts', width: 90, render: (_: any, r: ModelComplianceData) => <Tag color="default" className="text-[10px]">{r.compliantPartCountAl}/{r.partCountAl}</Tag> },
                             {
                                 title: 'Recycling Rate',
                                 key: 'recyclingRate',
+                                width: 120,
                                 render: (_: any, record: ModelComplianceData) => (
                                     <div>
-                                        <div className="font-bold">{record.eprRecycling?.actual ?? '-'}%</div>
+                                        <div className="font-bold text-xs">{record.eprRecycling?.actual ?? '-'}%</div>
                                         <div className="text-[10px] text-gray-500">Target: {record.eprRecycling?.target ?? '-'}%</div>
                                     </div>
                                 )
                             },
-                            {
-                                title: 'Exp. Count',
-                                dataIndex: 'exportVehicleCount',
-                                key: 'exportVehicleCount',
-                                render: (val: number) => <span className="font-semibold">{val?.toLocaleString()}</span>
-                            },
-                            {
-                                title: 'Readiness',
-                                dataIndex: 'cbamReadiness',
-                                key: 'cbamReadiness',
-                                render: (val: number) => (
-                                    <div className="w-20">
-                                        <Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} />
-                                        <div className="text-xs text-right mt-0.5">{val}%</div>
-                                    </div>
-                                )
-                            },
-                            {
-                                title: 'Calculation',
-                                dataIndex: 'cbamCalculation',
-                                key: 'cbamCalculation',
-                                render: (text: string) => <Tag color="blue">{text}</Tag>
-                            },
-                            {
-                                title: 'Amount (EUR)',
-                                dataIndex: 'cbamAmount',
-                                key: 'cbamAmount',
-                                render: (val: number) => <span className="font-mono text-gray-700">€{val?.toLocaleString()}</span>
-                            },
+                            { title: 'Exp. Count', dataIndex: 'exportVehicleCount', key: 'exportVehicleCount', width: 90, render: (val: number) => <span className="font-semibold text-xs">{val?.toLocaleString()}</span> },
+                            { title: 'CBAM Readiness', dataIndex: 'cbamReadiness', key: 'cbamReadiness', width: 100, render: (val: number) => (<div className="w-16"><Progress percent={val} size="small" strokeColor={val >= 90 ? '#10b981' : val >= 70 ? '#f59e0b' : '#ef4444'} showInfo={false} /><div className="text-[10px] text-right mt-0.5">{val}%</div></div>) },
+                            { title: 'Calculation', dataIndex: 'cbamCalculation', key: 'cbamCalculation', width: 110, render: (text: string) => <Tag color="blue" className="text-[10px]">{text}</Tag> },
+                            { title: 'Amount', dataIndex: 'cbamAmount', key: 'cbamAmount', width: 100, render: (val: number) => <span className="font-mono text-xs text-gray-700">€{val?.toLocaleString()}</span> },
+                            { title: 'Red. (Data)', dataIndex: 'reductionDataMgmt', key: 'reductionDataMgmt', width: 90, render: (val: number) => <span className="font-mono text-xs text-emerald-600">€{val?.toLocaleString()}</span> },
+                            { title: 'Red. (Sust.)', dataIndex: 'reductionSustainable', key: 'reductionSustainable', width: 90, render: (val: number) => <span className="font-mono text-xs text-emerald-600">€{val?.toLocaleString()}</span> },
                         ]}
                     />
                 </div>
@@ -922,6 +1123,7 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                                 <Option value="evitara">eVitara</Option>
                                 <Option value="fronx">Fronx</Option>
                                 <Option value="baleno">Baleno</Option>
+                                <Option value="xl6">XL6</Option>
                             </Select>
                         </div>
 
@@ -951,6 +1153,7 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                         columns={eprPartColumns('Recycling')}
                         pagination={{ pageSize: 8 }}
                         size="small"
+                        scroll={{ x: 1400 }}
                     />
                 </div>
             </div>

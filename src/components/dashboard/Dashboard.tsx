@@ -1,17 +1,33 @@
 import { useState, useCallback } from 'react';
-import { Tabs, ConfigProvider } from 'antd';
+import { Tabs, ConfigProvider, notification } from 'antd';
 import { Building2, Recycle, Factory, Truck } from 'lucide-react';
 import MSILTab from './tabs/MSILTab';
 import RVSFTab from './tabs/RVSFTab';
 import RecyclersTab from './tabs/RecyclersTab';
 import SuppliersTab from './tabs/SuppliersTab';
 import DashboardHeader from './DashboardHeader';
+import DataValidationBanner from './DataValidationBanner';
 import { FilterState, defaultFilters } from '@/data/dashboardData';
+import { Leaf } from 'lucide-react';
 
 const Dashboard = () => {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [activeTab, setActiveTab] = useState('msil');
   const [isLoading, setIsLoading] = useState(false);
+  const [customTargets, setCustomTargets] = useState<{ material: string; fy: string; unit: string; target: number }[]>([]);
+
+  const handleSaveTarget = useCallback((target: { material: string; fy: string; unit: string; target: number }) => {
+    setCustomTargets(prev => [...prev, target]);
+    notification.success({
+      message: 'Target Set Successfully',
+      description: `Target for ${target.material} has been updated for ${target.fy}.`,
+      placement: 'topRight',
+      className: '!bg-emerald-50 !border-emerald-200',
+      style: { border: '1px solid #a7f3d0', borderRadius: '12px' },
+      icon: <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center -ml-2"><Leaf className="w-4 h-4 text-emerald-600" /></div>,
+      duration: 4,
+    });
+  }, []);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string | string[] | Date) => {
     setIsLoading(true);
@@ -32,7 +48,7 @@ const Dashboard = () => {
           Corporate (MSIL)
         </span>
       ),
-      children: <MSILTab isLoading={isLoading} filters={filters} />,
+      children: <MSILTab isLoading={isLoading} filters={filters} customTargets={customTargets} />,
     },
     {
       key: 'rvsf',
@@ -102,9 +118,11 @@ const Dashboard = () => {
     <ConfigProvider theme={antdTheme}>
       <div className="bg-background">
         {/* Dashboard Header with filters and targets */}
-        <DashboardHeader filters={filters} onFilterChange={handleFilterChange} activeTab={activeTab} />
+        <DashboardHeader filters={filters} onFilterChange={handleFilterChange} activeTab={activeTab} customTargets={customTargets} onSaveTarget={handleSaveTarget} />
 
         <div className="px-6 py-6">
+          {/* Data Validation Banner */}
+          <DataValidationBanner className="mb-4" />
           {/* Tabs */}
           <Tabs
             activeKey={activeTab}

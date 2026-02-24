@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Skeleton, Statistic, Progress, Table, Tag, Divider, Button, Space, Select, notification, Tooltip } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Cell, RadialBarChart, RadialBar, PolarAngleAxis, AreaChart, Area } from 'recharts';
-import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet, Star, Package, Scale, Settings, Eye, Leaf, Info } from 'lucide-react';
+import { Recycle, ArrowRight, TrendingUp, Download, FileSpreadsheet, Star, Package, Scale, Settings, Eye, Leaf, Info, Folder } from 'lucide-react';
 import StarRating from '../StarRating';
 import ExpandableWidget from '../ExpandableWidget';
 import EcoScoreBadge from '../EcoScoreBadge';
@@ -23,6 +23,7 @@ import { getProgressColor } from '../KPICard';
 import AIInsightsWidget from '../AIInsightsWidget';
 import RankingTable from '../RankingTable';
 import { recyclerRankingKPIs, recyclerEntityScores } from '@/data/dashboardData';
+import COAViewerModal from '../COAViewerModal';
 
 interface RecyclersTabProps {
   isLoading: boolean;
@@ -58,6 +59,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
   const [setTargetsOpen, setSetTargetsOpen] = useState(false);
   const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
   const [ecoScoreModalOpen, setEcoScoreModalOpen] = useState(false);
+  const [coaViewerOpen, setCoaViewerOpen] = useState(false);
   const [customTargets, setCustomTargets] = useState<any[]>([]);
 
   // Calculate dynamic target for Recycled Percentage
@@ -319,7 +321,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
             </div>
             <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
               <span className="text-xs text-muted-foreground font-medium">Efficiency Rating:</span>
-              <StarRating value={recycleRatio} max={5} size={14} isPercentage={true} />
+              <StarRating value={recycleRatio} isPercentage={true} size={12} />
             </div>
           </div>
         </div>
@@ -372,7 +374,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
                 <Progress percent={recycleRatio} strokeColor={getProgressColor(recycleRatio)} trailColor="hsl(var(--muted))" />
                 <div className="mt-4 flex justify-between text-sm">
                   <span>Target: {targetRecycledPercentage}%</span>
-                  <StarRating value={recycleRatio} max={5} size={18} isPercentage={true} />
+                  <StarRating value={recycleRatio} isPercentage={true} size={14} />
                 </div>
               </div>
             </div>
@@ -455,7 +457,7 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
                 {/* Star rating */}
                 <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-dashed border-border">
                   <span className="text-xs font-semibold text-muted-foreground">Efficiency Rating:</span>
-                  <StarRating value={recycleRatio} max={5} size={16} isPercentage={true} />
+                  <StarRating value={recycleRatio} isPercentage={true} size={12} />
                 </div>
               </div>
             </div>
@@ -620,6 +622,33 @@ const RecyclersTab = ({ isLoading, filters }: RecyclersTabProps) => {
       </ExpandableWidget>
 
       <Divider />
+
+      {/* COA Documents Section */}
+      <div className="bg-card rounded-xl p-6 shadow-card flex items-center justify-between mb-8 border-l-4 border-accent">
+        <div>
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <Folder className="w-5 h-5 text-accent" />
+            Certificates of Analysis (COA)
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Access the latest material purity and compliance reports uploaded to the FE directory.
+          </p>
+        </div>
+        <Button
+          type="primary"
+          icon={<Folder className="w-4 h-4" />}
+          size="large"
+          className="bg-accent hover:bg-accent/90"
+          onClick={() => setCoaViewerOpen(true)}
+        >
+          View COA
+        </Button>
+      </div>
+
+      <COAViewerModal
+        isOpen={coaViewerOpen}
+        onClose={() => setCoaViewerOpen(false)}
+      />
 
       {/* AI Insights Section */}
       <AIInsightsWidget insights={recyclerAIInsights} title="Recycler Efficiency Insights" />

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Table, Tag, Skeleton, Divider, Button, Space, Progress, Tooltip, Segmented } from 'antd';
-import { CheckCircle, Download, FileSpreadsheet, Star, Leaf, Eye, Info, ChevronRight, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { Table, Tag, Skeleton, Divider, Button, Space, Progress, Tooltip, Segmented, notification, Modal } from 'antd';
+import { CheckCircle, Download, FileSpreadsheet, Star, Leaf, Eye, Info, ChevronRight, LayoutDashboard, ShieldCheck, AlertTriangle, Mail } from 'lucide-react';
 import { ComposedChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Area } from 'recharts';
 import KPICard, { getProgressColor } from '../KPICard';
 import AIInsightsWidget from '../AIInsightsWidget';
@@ -26,9 +26,10 @@ import ComplianceSubTab from '../Compliance/ComplianceSubTab';
 interface MSILTabProps {
   isLoading: boolean;
   filters: FilterState;
+  customTargets?: { material: string; fy: string; unit: string; target: number }[];
 }
 
-const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
+const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
   const financialYear = getFinancialYear(filters.dateFrom);
   const [ecoScoreModalOpen, setEcoScoreModalOpen] = useState(false);
   const { data: regulatoryData, isLoading: isRegulatoryLoading } = useRegulatoryData();
@@ -45,6 +46,68 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
   const filteredMaterials = filters.materials.length > 0
     ? materialTargetsData.filter(m => filters.materials.includes(m.material))
     : materialTargetsData;
+
+  // Apply custom targets override for KPI cards
+  const kpiMaterialsWithCustomTargets = useMemo(() => {
+    const kpiSlice = filteredMaterials.slice(0, 4);
+    if (customTargets.length === 0) return kpiSlice;
+    return kpiSlice.map(m => {
+      const custom = customTargets.find(
+        t => t.material === m.material && t.fy === financialYear
+      );
+      if (custom) {
+        return { ...m, target: custom.target, percentage: custom.target > 0 ? Math.min(100, (m.achieved / custom.target) * 100) : 0 };
+      }
+      return m;
+    });
+  }, [filteredMaterials, customTargets, financialYear]);
+
+  // Determine materials not meeting target for severity reporting
+  const materialsNotMeetingTarget = useMemo(() => {
+    return filteredMaterials.filter(m => m.percentage < 100);
+  }, [filteredMaterials]);
+
+  // Report Target Not Met handler
+  const handleReportTargetNotMet = () => {
+    Modal.confirm({
+      title: 'Report Target Shortfall',
+      icon: <AlertTriangle className="w-5 h-5 text-amber-500" />,
+      content: (
+        <div className="mt-3">
+          <p className="text-sm text-gray-600 mb-3">
+            The following materials are below their set targets. A report will be emailed to the compliance team.
+          </p>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {materialsNotMeetingTarget.slice(0, 8).map(m => {
+              const severity = m.percentage >= 80 ? 'warning' : m.percentage >= 50 ? 'orange' : 'error';
+              const severityLabel = m.percentage >= 80 ? 'Mild' : m.percentage >= 50 ? 'Moderate' : 'Critical';
+              return (
+                <div key={m.material} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border">
+                  <span className="font-medium text-sm">{m.material}</span>
+                  <div className="flex items-center gap-2">
+                    <Tag color={severity}>{severityLabel}</Tag>
+                    <span className="text-xs text-gray-500">{m.percentage.toFixed(1)}% achieved</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ),
+      okText: 'Send Report Email',
+      cancelText: 'Cancel',
+      okButtonProps: { className: 'bg-[#5a7a32] hover:bg-[#4b6a28]' },
+      onOk: () => {
+        notification.success({
+          message: 'Mail Sent Successfully',
+          description: 'Target shortfall report has been emailed to the compliance team.',
+          placement: 'topRight',
+          icon: <Mail className="w-5 h-5 text-emerald-600" />,
+          duration: 5,
+        });
+      },
+    });
+  };
 
   // Material Targets Table Columns with additional columns
   const materialColumns = [
@@ -135,14 +198,32 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
       dataIndex: 'model',
       key: 'model',
       render: (text: string) => <span className="font-medium text-primary">{text}</span>,
+      fixed: 'left' as const,
     },
     {
-      title: 'Overall Recycled Content',
-      dataIndex: 'recycledContentPercent',
-      key: 'recycledContentPercent',
-      render: (val: number) => (
-        <span className="font-bold text-emerald-600">{(val * 100).toFixed(1)}%</span>
-      ),
+      title: 'Overall Material Target (%)',
+      key: 'overallTarget',
+      render: (_: unknown, record: any) => {
+        const totalTarget = record.steelTarget + record.aluminumTarget + record.copperTarget + record.plasticTarget;
+        const totalAchieved = record.steelAchieved + record.aluminumAchieved + record.copperAchieved + record.plasticAchieved;
+        const overallPct = totalTarget > 0 ? ((totalAchieved / totalTarget) * 100) : 0;
+        const color = overallPct >= 100 ? '#16a34a' : overallPct >= 80 ? '#eab308' : '#dc2626';
+        return (
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-500">Target: {totalTarget}%</span>
+              <span className="font-semibold" style={{ color }}>{totalAchieved.toFixed(1)}%</span>
+            </div>
+            <Progress
+              percent={overallPct}
+              size="small"
+              showInfo={false}
+              strokeColor={color}
+            />
+            <span className="text-[10px] text-gray-400">{overallPct.toFixed(1)}% met</span>
+          </div>
+        );
+      },
     },
     {
       title: 'Steel (Target / Achieved)',
@@ -158,7 +239,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
       )
     },
     {
-      title: 'Aluminum (Target / Achieved)',
+      title: 'Aluminium (Target / Achieved)',
       key: 'aluminum',
       render: (_: unknown, record: any) => (
         <div className="flex items-center gap-2">
@@ -166,6 +247,32 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
           <span className="text-gray-400">/</span>
           <span className={`font-semibold ${record.aluminumAchieved >= record.aluminumTarget ? 'text-emerald-600' : 'text-amber-600'}`}>
             {record.aluminumAchieved}%
+          </span>
+        </div>
+      )
+    },
+    {
+      title: 'Copper (Target / Achieved)',
+      key: 'copper',
+      render: (_: unknown, record: any) => (
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">{record.copperTarget}%</span>
+          <span className="text-gray-400">/</span>
+          <span className={`font-semibold ${record.copperAchieved >= record.copperTarget ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {record.copperAchieved}%
+          </span>
+        </div>
+      )
+    },
+    {
+      title: 'Plastic (Target / Achieved)',
+      key: 'plastic',
+      render: (_: unknown, record: any) => (
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">{record.plasticTarget}%</span>
+          <span className="text-gray-400">/</span>
+          <span className={`font-semibold ${record.plasticAchieved >= record.plasticTarget ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {record.plasticAchieved}%
           </span>
         </div>
       )
@@ -214,28 +321,50 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
       title: 'Material',
       dataIndex: 'material',
       key: 'material',
-      render: (text: string) => <Tag>{text}</Tag>,
+      render: (text: string) => <Tag color="blue">{text}</Tag>,
     },
     {
-      title: 'Recycled Content (Target vs Met)',
-      key: 'recycledContentPercent',
+      title: 'Target (%)',
+      key: 'targetPercent',
       render: (_: unknown, record: any) => (
-        <div className="flex flex-col gap-1">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-gray-500">Target: {(record.targetPercent * 100).toFixed(0)}%</span>
-            <span className={`font-medium ${record.recycledContentPercent >= record.targetPercent ? 'text-emerald-600' : 'text-amber-600'}`}>
-              Met: {(record.recycledContentPercent * 100).toFixed(0)}%
-            </span>
-          </div>
-          <Progress
-            percent={record.recycledContentPercent * 100}
-            success={{ percent: record.targetPercent * 100 }}
-            size="small"
-            showInfo={false}
-            strokeColor={record.recycledContentPercent >= record.targetPercent ? "#10b981" : "#f59e0b"}
-          />
-        </div>
+        <span className="font-medium text-gray-700">{(record.targetPercent * 100).toFixed(0)}%</span>
       ),
+    },
+    {
+      title: 'Achieved (%)',
+      key: 'recycledContentPercent',
+      render: (_: unknown, record: any) => {
+        const met = record.recycledContentPercent >= record.targetPercent;
+        return (
+          <span className={`font-semibold ${met ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {(record.recycledContentPercent * 100).toFixed(0)}%
+          </span>
+        );
+      },
+    },
+    {
+      title: 'Target Met',
+      key: 'targetMet',
+      render: (_: unknown, record: any) => {
+        const met = record.recycledContentPercent >= record.targetPercent;
+        const pctOfTarget = record.targetPercent > 0 ? ((record.recycledContentPercent / record.targetPercent) * 100) : 0;
+        return (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Tag color={met ? 'success' : pctOfTarget >= 80 ? 'warning' : 'error'}>
+                {met ? 'MET' : `${pctOfTarget.toFixed(0)}% of target`}
+              </Tag>
+            </div>
+            <Progress
+              percent={record.recycledContentPercent * 100}
+              success={{ percent: record.targetPercent * 100 }}
+              size="small"
+              showInfo={false}
+              strokeColor={met ? '#10b981' : '#f59e0b'}
+            />
+          </div>
+        );
+      },
     },
     {
       title: 'Target Market',
@@ -263,7 +392,8 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
 
   const variants: Array<'green' | 'blue' | 'gold' | 'pink'> = ['green', 'blue', 'gold', 'pink'];
 
-  // Chart data for material targets - Combined Bar + Line chart
+  // Chart data for material targets - Individual per-material charts
+  const materialChartColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
   const barChartData = filteredMaterials.map(item => ({
     name: item.material,
     Target: item.target,
@@ -288,8 +418,8 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
     exportToCSV(data, `MSIL_Part_Recycled_Content_${financialYear}`, filters);
   };
 
-  // Show first 4 materials as KPI cards
-  const kpiMaterials = filteredMaterials.slice(0, 4);
+  // Show first 4 materials as KPI cards (with custom targets applied)
+  const kpiMaterials = kpiMaterialsWithCustomTargets;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -334,6 +464,30 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
                 showProgress={true}
               />
             ))}
+          </div>
+
+          {/* Report Target Not Met Button */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-100 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-amber-900 text-sm">Target Compliance Monitoring</h4>
+                <p className="text-xs text-amber-700">
+                  {materialsNotMeetingTarget.length} material{materialsNotMeetingTarget.length !== 1 ? 's' : ''} currently below target — report shortfall to compliance team
+                </p>
+              </div>
+            </div>
+            <Button
+              type="primary"
+              danger
+              icon={<Mail className="w-4 h-4" />}
+              onClick={handleReportTargetNotMet}
+              className="flex items-center gap-1"
+            >
+              Report Target Not Met
+            </Button>
           </div>
 
           {/* Corporate EcoScore Banner */}
@@ -462,47 +616,50 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
                     <Button icon={<FileSpreadsheet className="w-4 h-4" />} onClick={() => handleExportMaterials('excel')}>Excel</Button>
                   </Space>
                 </div>
-                <div className="h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                        height={80}
-                        interval={0}
-                      />
-                      <YAxis
-                        yAxisId="left"
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                        label={{ value: 'Quantity (MT)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
-                      />
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                        tickFormatter={(v) => `${v}%`}
-                        label={{ value: '% Achieved', angle: 90, position: 'insideRight', fill: 'hsl(var(--muted-foreground))' }}
-                      />
-                      <RechartsTooltip
-                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                        }}
-                        formatter={(value: number, name: string) => {
-                          if (name === 'Achievement %') return [`${value.toFixed(2)}%`, name];
-                          return [`${value.toLocaleString()} MT`, name];
-                        }}
-                      />
-                      <Legend wrapperStyle={{ paddingTop: 20 }} />
-                      <Bar yAxisId="left" dataKey="Achieved" name="Quantity Achieved (MT)" fill="#8dd1e1" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                      <Bar yAxisId="left" dataKey="Target" name="Target (MT)" fill="#ffc658" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                      <Line yAxisId="right" type="monotone" dataKey="Achievement %" stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: '#10b981' }} />
-                    </ComposedChart >
-                  </ResponsiveContainer >
+                <div className="h-auto">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredMaterials.map((item, idx) => {
+                      const color = materialChartColors[idx % materialChartColors.length];
+                      const pct = item.percentage;
+                      return (
+                        <div key={item.material} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-gray-800 truncate" title={item.material}>{item.material}</h4>
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${pct >= 100 ? 'bg-green-100 text-green-700' : pct >= 75 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                              {pct.toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="h-[120px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={[{ name: item.material, Target: item.target, Achieved: item.achieved }]} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="name" hide />
+                                <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                                <RechartsTooltip
+                                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: 11 }}
+                                  formatter={(value: number, name: string) => [`${value.toLocaleString()} MT`, name]}
+                                />
+                                <Bar dataKey="Target" fill="#e2e8f0" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                                <Bar dataKey="Achieved" fill={color} radius={[4, 4, 0, 0]} maxBarSize={30} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="mt-1">
+                            <Progress
+                              percent={Math.min(pct, 100)}
+                              size="small"
+                              strokeColor={color}
+                              showInfo={false}
+                            />
+                            <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
+                              <span>Achieved: {item.achieved.toLocaleString()} MT</span>
+                              <span>Target: {item.target.toLocaleString()} MT</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </ExpandableWidget>
@@ -510,7 +667,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
             {/* Material Targets Table */}
             < div className="bg-card rounded-xl p-6 shadow-card" >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Material-Wise Target vs Achievement (All {filteredMaterials.length} Materials)</h3>
+                <h3 className="text-lg font-semibold">Material-Wise Target vs Achievement</h3>
               </div>
 
               {
@@ -659,7 +816,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
                     dataSource={modelRecycledContentData.map((item, i) => ({ ...item, key: i }))}
                     pagination={false}
                     size="small"
-                    scroll={{ x: 600 }}
+                    scroll={{ x: 1200 }}
                   />
                 )}
               </div>
@@ -688,7 +845,7 @@ const MSILTab = ({ isLoading, filters }: MSILTabProps) => {
                     dataSource={partRecycledContentData.map((item, i) => ({ ...item, key: i }))}
                     pagination={false}
                     size="small"
-                    scroll={{ x: 600 }}
+                    scroll={{ x: 1000 }}
                   />
                 )}
               </div>

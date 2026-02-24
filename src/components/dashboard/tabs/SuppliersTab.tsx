@@ -170,7 +170,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
       title: 'Rating',
       key: 'rating',
       render: (_: unknown, record: { ecoScore: number }) => (
-        <StarRating value={record.ecoScore} max={5} size={14} />
+        <StarRating value={record.ecoScore} max={10} size={12} />
       ),
     },
     {
@@ -700,7 +700,7 @@ const SuppliersTab = ({ isLoading, filters }: SuppliersTabProps) => {
                   columns={[
                     { title: 'Component', dataIndex: 'name', key: 'name' },
                     { title: 'Score', dataIndex: 'score', key: 'score', render: (v) => <Tag color={getEcoScoreTag(v).color}>{v.toFixed(1)}</Tag> },
-                    { title: 'Rating', key: 'rating', render: (_, r) => <StarRating value={r.score} max={5} size={14} /> }
+                    { title: 'Rating', key: 'rating', render: (_, r) => <StarRating value={r.score} max={10} size={12} /> }
                   ]}
                   dataSource={ecoScoreData.map((item, i) => ({ ...item, key: i }))}
                   pagination={false}

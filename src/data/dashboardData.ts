@@ -126,6 +126,7 @@ const masterMaterialTargets: MaterialTarget[] = [
   { material: 'Lead Acid Battery', target: 200, achieved: 10, percentage: 5.00, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', sourcedFromELV: 'Yes' },
   { material: 'Waste', target: 400, achieved: 35, percentage: 8.75, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'No' },
   { material: 'Zinc', target: 140, achieved: 12, percentage: 8.57, unit: 'MT', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', sourcedFromELV: 'Yes' },
+  { material: 'Lithium-Ion Battery', target: 220, achieved: 18, percentage: 8.18, unit: 'MT', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', sourcedFromELV: 'Yes' },
 ];
 
 // Re-export static array for initial state if needed, but components should use get...
@@ -162,11 +163,15 @@ export const getMaterialTargets = (filters: FilterState): MaterialTarget[] => {
 export interface ModelRecycledContent {
   model: string;
   recycledContentPercent: number;
-  // New fields for breakdown
+  // Fields for material-wise breakdown
   steelTarget: number;
   steelAchieved: number;
   aluminumTarget: number;
   aluminumAchieved: number;
+  copperTarget: number;
+  copperAchieved: number;
+  plasticTarget: number;
+  plasticAchieved: number;
   status: 'compliant' | 'warning' | 'critical';
   targetMarket: string;
   financialYear: string;
@@ -175,14 +180,14 @@ export interface ModelRecycledContent {
 }
 
 const masterModelRecycledContent: ModelRecycledContent[] = [
-  { model: 'Fronx', recycledContentPercent: 0.010, steelTarget: 20, steelAchieved: 22, aluminumTarget: 10, aluminumAchieved: 12, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 8.5 },
-  { model: 'Wagon-R', recycledContentPercent: 0.005, steelTarget: 20, steelAchieved: 18, aluminumTarget: 10, aluminumAchieved: 8, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 7.2 },
-  { model: 'Alto', recycledContentPercent: 0.008, steelTarget: 20, steelAchieved: 21, aluminumTarget: 10, aluminumAchieved: 9, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.8 },
-  { model: 'Super Carry', recycledContentPercent: 0.004, steelTarget: 15, steelAchieved: 14, aluminumTarget: 8, aluminumAchieved: 7, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 6.5 },
-  { model: 'Swift', recycledContentPercent: 0.012, steelTarget: 20, steelAchieved: 24, aluminumTarget: 10, aluminumAchieved: 11, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 9.1 },
-  { model: 'Baleno', recycledContentPercent: 0.009, steelTarget: 20, steelAchieved: 20, aluminumTarget: 10, aluminumAchieved: 9.5, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 8.0 },
-  { model: 'Dzire', recycledContentPercent: 0.007, steelTarget: 20, steelAchieved: 19, aluminumTarget: 10, aluminumAchieved: 8.5, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.5 },
-  { model: 'Ertiga', recycledContentPercent: 0.011, steelTarget: 20, steelAchieved: 22, aluminumTarget: 10, aluminumAchieved: 11, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.8 },
+  { model: 'Fronx', recycledContentPercent: 0.010, steelTarget: 20, steelAchieved: 22, aluminumTarget: 10, aluminumAchieved: 12, copperTarget: 5, copperAchieved: 5.5, plasticTarget: 8, plasticAchieved: 7.2, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 8.5 },
+  { model: 'Wagon-R', recycledContentPercent: 0.005, steelTarget: 20, steelAchieved: 18, aluminumTarget: 10, aluminumAchieved: 8, copperTarget: 5, copperAchieved: 4.2, plasticTarget: 8, plasticAchieved: 6.5, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 7.2 },
+  { model: 'Alto', recycledContentPercent: 0.008, steelTarget: 20, steelAchieved: 21, aluminumTarget: 10, aluminumAchieved: 9, copperTarget: 5, copperAchieved: 4.8, plasticTarget: 8, plasticAchieved: 7.5, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.8 },
+  { model: 'Super Carry', recycledContentPercent: 0.004, steelTarget: 15, steelAchieved: 14, aluminumTarget: 8, aluminumAchieved: 7, copperTarget: 4, copperAchieved: 3.5, plasticTarget: 6, plasticAchieved: 5.0, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 6.5 },
+  { model: 'Swift', recycledContentPercent: 0.012, steelTarget: 20, steelAchieved: 24, aluminumTarget: 10, aluminumAchieved: 11, copperTarget: 5, copperAchieved: 5.8, plasticTarget: 8, plasticAchieved: 8.5, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 9.1 },
+  { model: 'Baleno', recycledContentPercent: 0.009, steelTarget: 20, steelAchieved: 20, aluminumTarget: 10, aluminumAchieved: 9.5, copperTarget: 5, copperAchieved: 4.5, plasticTarget: 8, plasticAchieved: 7.0, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Manesar', ecoScore: 8.0 },
+  { model: 'Dzire', recycledContentPercent: 0.007, steelTarget: 20, steelAchieved: 19, aluminumTarget: 10, aluminumAchieved: 8.5, copperTarget: 5, copperAchieved: 4.0, plasticTarget: 8, plasticAchieved: 6.8, status: 'compliant', targetMarket: 'Export', financialYear: '2025-26', plant: 'Gurgaon', ecoScore: 7.5 },
+  { model: 'Ertiga', recycledContentPercent: 0.011, steelTarget: 20, steelAchieved: 22, aluminumTarget: 10, aluminumAchieved: 11, copperTarget: 5, copperAchieved: 5.2, plasticTarget: 8, plasticAchieved: 8.0, status: 'compliant', targetMarket: 'Domestic', financialYear: '2025-26', plant: 'Gujarat', ecoScore: 8.8 },
 ];
 
 export const modelRecycledContent = masterModelRecycledContent;

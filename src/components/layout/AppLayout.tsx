@@ -12,8 +12,8 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     <div className="min-h-screen flex bg-background">
       {/* Sidebar removed for isolated dashboard view - code preserved in AppSidebar.tsx */}
       {/* <AppSidebar /> */}
-      <div className="flex-1 flex flex-col">
-        <main className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>

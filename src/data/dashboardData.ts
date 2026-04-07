@@ -470,6 +470,30 @@ export const getMSILComponentDispatchData = (filters: FilterState): ComponentDis
   }));
 };
 
+// Material Weight Breakdown (Total Weight by Category)
+export interface MaterialWeightItem {
+  material: string;
+  weight: number;
+  unit: string;
+}
+
+const masterMaterialWeightItems: MaterialWeightItem[] = [
+  { material: 'Mix Steel', weight: 4526.94, unit: 'Kgs' },
+  { material: 'Aluminium', weight: 410.63, unit: 'Kgs' },
+  { material: 'Hazardous Waste', weight: 428.84, unit: 'Kgs' },
+  { material: 'Shell & Painted Steel', weight: 479.38, unit: 'Kgs' },
+  { material: 'Plastic Scrap', weight: 200.20, unit: 'Kgs' },
+];
+
+const masterTotalWeightKgs = 6974.00;
+
+export const getMaterialWeightData = (_filters: FilterState): { total: number; items: MaterialWeightItem[] } => {
+  return {
+    total: masterTotalWeightKgs,
+    items: masterMaterialWeightItems,
+  };
+};
+
 // Recycler Plastic Data
 export interface RecyclerPlasticData {
   type: string;

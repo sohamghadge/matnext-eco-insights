@@ -18,6 +18,7 @@ import {
   getRVSFSummaryStats,
   getScrapDispatchDetails,
   getMSILComponentDispatchData,
+  getMaterialWeightData,
   getMonthwiseCDData,
   getVehicleOriginLocations,
   msilTestVehiclesData, // Keep static or make dynamic if needed
@@ -55,6 +56,7 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
   const rvsfSummaryData = useMemo(() => getRVSFSummaryStats(filters), [filters]);
   const scrapDispatchData = useMemo(() => getScrapDispatchDetails(filters), [filters]);
   const componentDispatchData = useMemo(() => getMSILComponentDispatchData(filters), [filters]);
+  const materialWeightData = useMemo(() => getMaterialWeightData(filters), [filters]);
   const cdTrendData = useMemo(() => getMonthwiseCDData(filters), [filters]);
   const vehicleOriginData = useMemo(() => getVehicleOriginLocations(filters), [filters]);
 
@@ -304,14 +306,17 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
           </div>
         </div>
 
-        {/* Right Card - MSIL Components Dispatch Details */}
+        {/* Right Card - Material Weight Breakdown */}
         <div className="bg-amber-50 border-2 border-amber-600 rounded-xl p-4">
-          <h4 className="font-semibold text-amber-800 underline mb-3">MSIL Components Dispatch Details:</h4>
+          <div className="flex justify-between items-center mb-3 pb-2 border-b border-amber-300">
+            <span className="font-bold text-amber-900">Total Weight (Kgs)</span>
+            <span className="font-bold text-amber-600">{materialWeightData.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
           <div className="space-y-2">
-            {componentDispatchData.map((item) => (
-              <div key={item.component} className="flex justify-between items-center">
-                <span className="text-sm text-amber-800">{item.component} ({item.unit}) =</span>
-                <span className="font-bold text-amber-700">{item.dispatchQuantity.toLocaleString()}</span>
+            {materialWeightData.items.map((item) => (
+              <div key={item.material} className="flex justify-between items-center">
+                <span className="text-sm text-amber-800">{item.material} ({item.unit})</span>
+                <span className="font-bold text-amber-700">{item.weight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             ))}
           </div>

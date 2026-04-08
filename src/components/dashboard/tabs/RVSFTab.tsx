@@ -308,7 +308,8 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
 
         {/* Right Card - Material Weight Breakdown */}
         <div className="bg-amber-50 border-2 border-amber-600 rounded-xl p-4">
-          <div className="flex justify-between items-center mb-3 pb-2 border-b border-amber-300">
+          <h4 className="font-semibold text-amber-900 underline mb-3 pb-2 border-b border-amber-300">MSIL Components Dispatch</h4>
+          <div className="flex justify-between items-center mb-2">
             <span className="font-bold text-amber-900">Total Weight (Kgs)</span>
             <span className="font-bold text-amber-600">{materialWeightData.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>

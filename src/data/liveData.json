@@ -1,0 +1,111 @@
+{
+  "oemCompetitor": {
+    "lastUpdated": "2026-05-08T09:24:33.893Z",
+    "monthlyOverrides": {
+      "Jan 2026": {
+        "rewire_chandigarh": 308,
+        "rewire_jaipur": 289,
+        "rewire_delhi": 118,
+        "cero_indore": 444,
+        "cero_ahmedabad": 357,
+        "cero_pune": 19,
+        "cero_bengaluru": 477,
+        "cero_guwahati": 40,
+        "msti_noida": 517,
+        "rewire_lucknow": 28,
+        "rewire_raipur": 194,
+        "rewire_pune": 98,
+        "tt_recycling_ahmedabad": 0
+      },
+      "Feb 2026": {
+        "rewire_chandigarh": 166,
+        "rewire_jaipur": 310,
+        "rewire_delhi": 120,
+        "cero_indore": 361,
+        "cero_ahmedabad": 346,
+        "cero_pune": 88,
+        "cero_bengaluru": 1097,
+        "cero_guwahati": 54,
+        "msti_noida": 532,
+        "rewire_lucknow": 38,
+        "rewire_raipur": 164,
+        "rewire_pune": 94,
+        "tt_recycling_ahmedabad": 0
+      },
+      "Mar 2026": {
+        "rewire_chandigarh": 215,
+        "rewire_jaipur": 366,
+        "rewire_delhi": 225,
+        "cero_indore": 405,
+        "cero_ahmedabad": 317,
+        "cero_pune": 111,
+        "cero_bengaluru": 364,
+        "cero_guwahati": 41,
+        "msti_noida": 672,
+        "rewire_lucknow": 61,
+        "rewire_raipur": 134,
+        "rewire_pune": 122,
+        "tt_recycling_ahmedabad": 1
+      },
+      "Apr 2026": {
+        "rewire_chandigarh": 208,
+        "rewire_jaipur": 354,
+        "rewire_delhi": 200,
+        "cero_indore": 340,
+        "cero_ahmedabad": 309,
+        "cero_pune": 120,
+        "cero_bengaluru": 385,
+        "cero_guwahati": 36,
+        "msti_noida": 716,
+        "rewire_lucknow": 56,
+        "rewire_raipur": 169,
+        "rewire_pune": 145,
+        "tt_recycling_ahmedabad": 0
+      }
+    },
+    "rcOriginOverrides": {}
+  },
+  "elvHotspot": {
+    "lastUpdated": "2026-05-08T09:24:33.893Z",
+    "collectionOverrides": {
+      "2021-22": {
+        "RVSF-001": 3
+      },
+      "2025-26": {
+        "AS-001": 149,
+        "OR-001": 600,
+        "AS-004": 317,
+        "CH-001": 1224,
+        "KL-001": 79,
+        "KL-002": 24,
+        "DL-001": 691,
+        "AS-002": 160,
+        "DL-002": 422,
+        "PB-001": 9,
+        "CG-003": 28,
+        "GJ-002": 1214,
+        "AP-003": 60,
+        "DL-003": 10,
+        "AP-004": 88,
+        "UK-003": 86,
+        "PB-005": 32,
+        "RVSF-015": 1607,
+        "TN-001": 424,
+        "RVSF-002": 1389,
+        "RVSF-004": 455,
+        "RVSF-003": 2265,
+        "AS-005": 179,
+        "GA-001": 363,
+        "UP-N046": 2482,
+        "RVSF-020": 198,
+        "CG-001": 611,
+        "UP-N072": 110,
+        "WB-004": 1183,
+        "KL-003": 8,
+        "TS-003": 391,
+        "GJ-010": 2,
+        "KA-003": 1
+      }
+    }
+  }
+}

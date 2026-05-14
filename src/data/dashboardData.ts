@@ -1,5 +1,10 @@
 // Dashboard data extracted from Excel file - Complete Dataset with all 21 materials
 
+import liveDataRaw from './liveData.json';
+const _elvCollectionOverrides: Record<string, Record<string, number>> =
+  (liveDataRaw as { elvHotspot?: { collectionOverrides?: Record<string, Record<string, number>> } })
+    .elvHotspot?.collectionOverrides ?? {};
+
 export interface FilterState {
   dateFrom: Date;
   dateTo: Date;
@@ -1348,5 +1353,936 @@ export const rvsfEntityScores: EntityScore[] = [
   { entityName: 'MSTI Noida', scores: [{ kpiId: 'elv_volume', rawScore: 9 }, { kpiId: 'recovery_rate', rawScore: 8 }, { kpiId: 'cod_gen', rawScore: 9 }, { kpiId: 'compliance', rawScore: 9 }, { kpiId: 'logistics', rawScore: 7 }] },
   { entityName: 'ABC Scrapping Facility', scores: [{ kpiId: 'elv_volume', rawScore: 8 }, { kpiId: 'recovery_rate', rawScore: 9 }, { kpiId: 'cod_gen', rawScore: 8 }, { kpiId: 'compliance', rawScore: 8 }, { kpiId: 'logistics', rawScore: 8 }] },
   { entityName: 'XYZ Scrapping Facility', scores: [{ kpiId: 'elv_volume', rawScore: 7 }, { kpiId: 'recovery_rate', rawScore: 7 }, { kpiId: 'cod_gen', rawScore: 8 }, { kpiId: 'compliance', rawScore: 9 }, { kpiId: 'logistics', rawScore: 9 }] },
+];
+
+// ============================================
+// TAB 5: ELV HOTSPOT ANALYSIS DATA
+// ============================================
+
+export interface SIAMSalesDataPoint {
+  state: string;
+  fyYear: string;
+  unitsSold: number;
+}
+
+export interface ELVRVSFRegistry {
+  rvsfId: string;
+  name: string;
+  state: string;
+  district: string;
+  registrationDate: string;
+  status: 'active' | 'inactive';
+  capacityPerYear: number;
+  vehicleTypes: string[];
+  lat?: number;
+  lng?: number;
+  address?: string;
+  pincode?: string;
+}
+
+export interface ELVRVSFCollection {
+  rvsfId: string;
+  state: string;
+  fyYear: string;
+  vehiclesCollected: number;
+}
+
+export interface ELVOriginDataPoint {
+  originState: string;
+  makeYear: number;
+  fyYearScrapped: string;
+  vehicleCount: number;
+}
+
+export interface StateHotspotData {
+  state: string;
+  lat: number;
+  lng: number;
+  salesLagYear: number;
+  rvsfCount: number;
+  vehiclesCollected: number;
+  hotspotScore: number;
+  coverageStatus: 'green' | 'amber' | 'red';
+  totalCapacity: number;
+  salesCurrentYear: number;
+}
+
+// State geo-centers
+export const elvStateCoords: Record<string, [number, number]> = {
+  'Maharashtra': [19.7515, 75.7139],
+  'Uttar Pradesh': [26.8467, 80.9462],
+  'Delhi': [28.7041, 77.1025],
+  'Karnataka': [15.3173, 75.7139],
+  'Tamil Nadu': [11.1271, 78.6569],
+  'Gujarat': [22.2587, 71.1924],
+  'Haryana': [29.0588, 76.0856],
+  'Rajasthan': [27.0238, 74.2179],
+  'Telangana': [17.1232, 79.2088],
+  'West Bengal': [22.9868, 87.8550],
+  'Madhya Pradesh': [22.9734, 78.6569],
+  'Punjab': [31.1471, 75.3412],
+  'Kerala': [10.8505, 76.2711],
+  'Andhra Pradesh': [15.9129, 79.7400],
+  'Bihar': [25.0961, 85.3131],
+  'Odisha': [20.9517, 85.0985],
+  'Chhattisgarh': [21.2787, 81.8661],
+  'Jharkhand': [23.6102, 85.2799],
+  'Assam': [26.2006, 92.9376],
+  'Uttarakhand': [30.0668, 79.0193],
+};
+
+// SIAM State-wise PV Sales Data (FY 2004-05 to FY 2024-25)
+// National totals from SIAM Annual Reports. State share derived from Vahan registration data:
+// MH 13%, UP 11%, DL 7%, KA 9%, TN 8.5%, GJ 7.2%, HR 5%, RJ 8%, WB 4.2%, MP 5.1%,
+// AP 3.8%, TS 3.7%, PB 2.6%, KL 3.5%, BR 2.5%, OD 1.5%, CG 1.1%, JH 1%, AS 1%, UK 0.8%
+// National totals (units): FY05=1.062M, FY10=1.950M, FY15=2.601M, FY19=3.377M, FY21=2.711M, FY25=4.300M
+const siamSalesRaw: Record<string, Record<string, number>> = {
+  'Maharashtra': {
+    '2004-05': 138100, '2005-06': 148600, '2006-07': 179300, '2007-08': 201400,
+    '2008-09': 201800, '2009-10': 253500, '2010-11': 325100, '2011-12': 341800,
+    '2012-13': 346600, '2013-14': 325400, '2014-15': 338100, '2015-16': 362600,
+    '2016-17': 396200, '2017-18': 427400, '2018-19': 439000, '2019-20': 360500,
+    '2020-21': 352400, '2021-22': 398200, '2022-23': 505700, '2023-24': 547800,
+    '2024-25': 559000,
+  },
+  'Uttar Pradesh': {
+    '2004-05': 116800, '2005-06': 125700, '2006-07': 151700, '2007-08': 170400,
+    '2008-09': 170700, '2009-10': 214500, '2010-11': 275100, '2011-12': 289200,
+    '2012-13': 293300, '2013-14': 275300, '2014-15': 286100, '2015-16': 306800,
+    '2016-17': 335300, '2017-18': 361700, '2018-19': 371500, '2019-20': 305000,
+    '2020-21': 298200, '2021-22': 336900, '2022-23': 427900, '2023-24': 463500,
+    '2024-25': 473000,
+  },
+  'Delhi': {
+    '2004-05': 74300, '2005-06': 80000, '2006-07': 96500, '2007-08': 108400,
+    '2008-09': 108600, '2009-10': 136500, '2010-11': 175100, '2011-12': 184000,
+    '2012-13': 186600, '2013-14': 175200, '2014-15': 182100, '2015-16': 195200,
+    '2016-17': 213400, '2017-18': 230200, '2018-19': 236400, '2019-20': 194100,
+    '2020-21': 189800, '2021-22': 214400, '2022-23': 272300, '2023-24': 295000,
+    '2024-25': 301000,
+  },
+  'Karnataka': {
+    '2004-05': 95600, '2005-06': 102900, '2006-07': 124100, '2007-08': 139400,
+    '2008-09': 139700, '2009-10': 175500, '2010-11': 225100, '2011-12': 236600,
+    '2012-13': 239900, '2013-14': 225300, '2014-15': 234100, '2015-16': 251000,
+    '2016-17': 274300, '2017-18': 295900, '2018-19': 303900, '2019-20': 249600,
+    '2020-21': 244000, '2021-22': 275700, '2022-23': 350100, '2023-24': 379300,
+    '2024-25': 387000,
+  },
+  'Tamil Nadu': {
+    '2004-05': 90300, '2005-06': 97200, '2006-07': 117200, '2007-08': 131700,
+    '2008-09': 131900, '2009-10': 165800, '2010-11': 212600, '2011-12': 223500,
+    '2012-13': 226600, '2013-14': 212800, '2014-15': 221100, '2015-16': 237100,
+    '2016-17': 259100, '2017-18': 279500, '2018-19': 287000, '2019-20': 235700,
+    '2020-21': 230400, '2021-22': 260400, '2022-23': 330700, '2023-24': 358200,
+    '2024-25': 365500,
+  },
+  'Gujarat': {
+    '2004-05': 76500, '2005-06': 82300, '2006-07': 99300, '2007-08': 111500,
+    '2008-09': 111700, '2009-10': 140400, '2010-11': 180100, '2011-12': 189300,
+    '2012-13': 192000, '2013-14': 180200, '2014-15': 187300, '2015-16': 200800,
+    '2016-17': 219500, '2017-18': 236700, '2018-19': 243100, '2019-20': 199700,
+    '2020-21': 195200, '2021-22': 220500, '2022-23': 280100, '2023-24': 303400,
+    '2024-25': 309600,
+  },
+  'Haryana': {
+    '2004-05': 53100, '2005-06': 57200, '2006-07': 69000, '2007-08': 77500,
+    '2008-09': 77600, '2009-10': 97500, '2010-11': 125100, '2011-12': 131500,
+    '2012-13': 133300, '2013-14': 125200, '2014-15': 130100, '2015-16': 139500,
+    '2016-17': 152400, '2017-18': 164400, '2018-19': 168900, '2019-20': 138700,
+    '2020-21': 135600, '2021-22': 153200, '2022-23': 194500, '2023-24': 210700,
+    '2024-25': 215000,
+  },
+  'Rajasthan': {
+    '2004-05': 85000, '2005-06': 91400, '2006-07': 110300, '2007-08': 123900,
+    '2008-09': 124200, '2009-10': 156000, '2010-11': 200100, '2011-12': 210300,
+    '2012-13': 213300, '2013-14': 200200, '2014-15': 208100, '2015-16': 223100,
+    '2016-17': 243800, '2017-18': 263000, '2018-19': 270200, '2019-20': 221800,
+    '2020-21': 216900, '2021-22': 245000, '2022-23': 311200, '2023-24': 337100,
+    '2024-25': 344000,
+  },
+  'Telangana': {
+    '2004-05': 39300, '2005-06': 42300, '2006-07': 51000, '2007-08': 57300,
+    '2008-09': 57400, '2009-10': 72200, '2010-11': 92500, '2011-12': 97300,
+    '2012-13': 98600, '2013-14': 92600, '2014-15': 96200, '2015-16': 103200,
+    '2016-17': 112800, '2017-18': 121700, '2018-19': 124900, '2019-20': 102600,
+    '2020-21': 100300, '2021-22': 113300, '2022-23': 143900, '2023-24': 155900,
+    '2024-25': 159100,
+  },
+  'West Bengal': {
+    '2004-05': 44600, '2005-06': 48000, '2006-07': 57900, '2007-08': 65100,
+    '2008-09': 65200, '2009-10': 81900, '2010-11': 105000, '2011-12': 110400,
+    '2012-13': 112000, '2013-14': 105100, '2014-15': 109200, '2015-16': 117100,
+    '2016-17': 128000, '2017-18': 138100, '2018-19': 141800, '2019-20': 116500,
+    '2020-21': 113900, '2021-22': 128600, '2022-23': 163400, '2023-24': 177000,
+    '2024-25': 180600,
+  },
+  'Madhya Pradesh': {
+    '2004-05': 54200, '2005-06': 58300, '2006-07': 70300, '2007-08': 79000,
+    '2008-09': 79200, '2009-10': 99500, '2010-11': 127600, '2011-12': 134100,
+    '2012-13': 136000, '2013-14': 127700, '2014-15': 132700, '2015-16': 142200,
+    '2016-17': 155400, '2017-18': 167700, '2018-19': 172200, '2019-20': 141400,
+    '2020-21': 138300, '2021-22': 156200, '2022-23': 198400, '2023-24': 214900,
+    '2024-25': 219300,
+  },
+  'Punjab': {
+    '2004-05': 27600, '2005-06': 29700, '2006-07': 35900, '2007-08': 40300,
+    '2008-09': 40400, '2009-10': 50700, '2010-11': 65000, '2011-12': 68400,
+    '2012-13': 69300, '2013-14': 65100, '2014-15': 67600, '2015-16': 72500,
+    '2016-17': 79200, '2017-18': 85500, '2018-19': 87800, '2019-20': 72100,
+    '2020-21': 70500, '2021-22': 79600, '2022-23': 101100, '2023-24': 109600,
+    '2024-25': 111800,
+  },
+  'Kerala': {
+    '2004-05': 37200, '2005-06': 40000, '2006-07': 48300, '2007-08': 54200,
+    '2008-09': 54300, '2009-10': 68300, '2010-11': 87500, '2011-12': 92000,
+    '2012-13': 93300, '2013-14': 87600, '2014-15': 91000, '2015-16': 97600,
+    '2016-17': 106700, '2017-18': 115100, '2018-19': 118200, '2019-20': 97100,
+    '2020-21': 94900, '2021-22': 107200, '2022-23': 136200, '2023-24': 147500,
+    '2024-25': 150500,
+  },
+  'Andhra Pradesh': {
+    '2004-05': 40400, '2005-06': 43400, '2006-07': 52400, '2007-08': 58900,
+    '2008-09': 59000, '2009-10': 74100, '2010-11': 95000, '2011-12': 99900,
+    '2012-13': 101300, '2013-14': 95100, '2014-15': 98800, '2015-16': 106000,
+    '2016-17': 115800, '2017-18': 124900, '2018-19': 128300, '2019-20': 105400,
+    '2020-21': 103000, '2021-22': 116400, '2022-23': 147800, '2023-24': 160100,
+    '2024-25': 163400,
+  },
+  'Bihar': {
+    '2004-05': 26600, '2005-06': 28600, '2006-07': 34500, '2007-08': 38700,
+    '2008-09': 38800, '2009-10': 48800, '2010-11': 62500, '2011-12': 65700,
+    '2012-13': 66700, '2013-14': 62600, '2014-15': 65000, '2015-16': 69700,
+    '2016-17': 76200, '2017-18': 82200, '2018-19': 84400, '2019-20': 69300,
+    '2020-21': 67800, '2021-22': 76600, '2022-23': 97300, '2023-24': 105400,
+    '2024-25': 107500,
+  },
+  'Odisha': {
+    '2004-05': 15900, '2005-06': 17100, '2006-07': 20700, '2007-08': 23200,
+    '2008-09': 23300, '2009-10': 29300, '2010-11': 37500, '2011-12': 39400,
+    '2012-13': 40000, '2013-14': 37500, '2014-15': 39000, '2015-16': 41800,
+    '2016-17': 45700, '2017-18': 49300, '2018-19': 50700, '2019-20': 41600,
+    '2020-21': 40700, '2021-22': 45900, '2022-23': 58400, '2023-24': 63200,
+    '2024-25': 64500,
+  },
+  'Chhattisgarh': {
+    '2004-05': 11700, '2005-06': 12600, '2006-07': 15200, '2007-08': 17000,
+    '2008-09': 17100, '2009-10': 21500, '2010-11': 27500, '2011-12': 28900,
+    '2012-13': 29300, '2013-14': 27500, '2014-15': 28600, '2015-16': 30700,
+    '2016-17': 33500, '2017-18': 36200, '2018-19': 37100, '2019-20': 30500,
+    '2020-21': 29800, '2021-22': 33700, '2022-23': 42800, '2023-24': 46400,
+    '2024-25': 47300,
+  },
+  'Jharkhand': {
+    '2004-05': 10600, '2005-06': 11400, '2006-07': 13800, '2007-08': 15500,
+    '2008-09': 15500, '2009-10': 19500, '2010-11': 25000, '2011-12': 26300,
+    '2012-13': 26700, '2013-14': 25000, '2014-15': 26000, '2015-16': 27900,
+    '2016-17': 30500, '2017-18': 32900, '2018-19': 33800, '2019-20': 27700,
+    '2020-21': 27100, '2021-22': 30600, '2022-23': 38900, '2023-24': 42100,
+    '2024-25': 43000,
+  },
+  'Assam': {
+    '2004-05': 10600, '2005-06': 11400, '2006-07': 13800, '2007-08': 15500,
+    '2008-09': 15500, '2009-10': 19500, '2010-11': 25000, '2011-12': 26300,
+    '2012-13': 26700, '2013-14': 25000, '2014-15': 26000, '2015-16': 27900,
+    '2016-17': 30500, '2017-18': 32900, '2018-19': 33800, '2019-20': 27700,
+    '2020-21': 27100, '2021-22': 30600, '2022-23': 38900, '2023-24': 42100,
+    '2024-25': 43000,
+  },
+  'Uttarakhand': {
+    '2004-05': 8500, '2005-06': 9100, '2006-07': 11000, '2007-08': 12400,
+    '2008-09': 12400, '2009-10': 15600, '2010-11': 20000, '2011-12': 21000,
+    '2012-13': 21300, '2013-14': 20000, '2014-15': 20800, '2015-16': 22300,
+    '2016-17': 24400, '2017-18': 26300, '2018-19': 27000, '2019-20': 22200,
+    '2020-21': 21700, '2021-22': 24500, '2022-23': 31100, '2023-24': 33700,
+    '2024-25': 34400,
+  },
+};
+
+export const elvRvsfRegistry: ELVRVSFRegistry[] = [
+  // ── Existing core RVSFs (with coordinates) ──
+  { rvsfId: 'RVSF-001', name: 'MSTI Noida', state: 'Uttar Pradesh', district: 'Gautam Buddh Nagar', registrationDate: '2022-03-15', status: 'active', capacityPerYear: 25000, vehicleTypes: ['Four Wheeler', 'Three Wheeler'], lat: 28.54, lng: 77.39, pincode: '201305' },
+  { rvsfId: 'RVSF-002', name: 'MSTI Gujarat', state: 'Gujarat', district: 'Ahmedabad', registrationDate: '2022-06-20', status: 'active', capacityPerYear: 20000, vehicleTypes: ['Four Wheeler'], lat: 23.03, lng: 72.57, pincode: '380001' },
+  { rvsfId: 'RVSF-003', name: 'MSTI South - Bengaluru', state: 'Karnataka', district: 'Bengaluru Urban', registrationDate: '2022-09-10', status: 'active', capacityPerYear: 18000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 12.97, lng: 77.59, pincode: '560001' },
+  { rvsfId: 'RVSF-004', name: 'MSTI West - Pune', state: 'Maharashtra', district: 'Pune', registrationDate: '2022-11-05', status: 'active', capacityPerYear: 22000, vehicleTypes: ['Four Wheeler'], lat: 18.52, lng: 73.86, pincode: '411001' },
+  { rvsfId: 'RVSF-005', name: 'Delhi RVSF Hub', state: 'Delhi', district: 'South West Delhi', registrationDate: '2021-08-12', status: 'active', capacityPerYear: 30000, vehicleTypes: ['Four Wheeler', 'Two Wheeler', 'Three Wheeler'], lat: 28.60, lng: 77.08, pincode: '110033' },
+  { rvsfId: 'RVSF-006', name: 'Haryana Auto Scrap - Gurugram', state: 'Haryana', district: 'Gurugram', registrationDate: '2022-01-18', status: 'active', capacityPerYear: 15000, vehicleTypes: ['Four Wheeler'], lat: 28.46, lng: 77.03, pincode: '122001' },
+  { rvsfId: 'RVSF-007', name: 'Chennai Vehicle Scrap Centre', state: 'Tamil Nadu', district: 'Chennai', registrationDate: '2022-04-22', status: 'active', capacityPerYear: 16000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 13.08, lng: 80.27, pincode: '600001' },
+  { rvsfId: 'RVSF-008', name: 'Hyderabad ELV Processing', state: 'Telangana', district: 'Rangareddy', registrationDate: '2023-01-15', status: 'active', capacityPerYear: 12000, vehicleTypes: ['Four Wheeler'], lat: 17.38, lng: 78.48, pincode: '500001' },
+  { rvsfId: 'RVSF-009', name: 'Kolkata Scrap Hub', state: 'West Bengal', district: 'Kolkata', registrationDate: '2023-03-20', status: 'active', capacityPerYear: 10000, vehicleTypes: ['Four Wheeler', 'Three Wheeler'], lat: 22.57, lng: 88.36, pincode: '700001' },
+  { rvsfId: 'RVSF-010', name: 'Rajasthan Auto Recycle - Jaipur', state: 'Rajasthan', district: 'Jaipur', registrationDate: '2023-06-10', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 26.91, lng: 75.79, pincode: '302001' },
+  { rvsfId: 'RVSF-011', name: 'Punjab Vehicle Dismantling', state: 'Punjab', district: 'Ludhiana', registrationDate: '2023-09-05', status: 'active', capacityPerYear: 7000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 30.90, lng: 75.85, pincode: '141001' },
+  { rvsfId: 'RVSF-012', name: 'Kerala ELV Hub - Kochi', state: 'Kerala', district: 'Ernakulam', registrationDate: '2024-01-20', status: 'active', capacityPerYear: 9000, vehicleTypes: ['Four Wheeler'], lat: 9.97, lng: 76.28, pincode: '682001' },
+  { rvsfId: 'RVSF-013', name: 'Mumbai Scrap Centre - Thane', state: 'Maharashtra', district: 'Thane', registrationDate: '2023-11-15', status: 'active', capacityPerYear: 20000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 19.30, lng: 73.07, pincode: '421311' },
+  { rvsfId: 'RVSF-014', name: 'Nagpur Auto Recycle', state: 'Maharashtra', district: 'Nagpur', registrationDate: '2024-02-28', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 21.15, lng: 79.09, pincode: '440001' },
+  { rvsfId: 'RVSF-015', name: 'MP Vehicles Scrap - Indore', state: 'Madhya Pradesh', district: 'Indore', registrationDate: '2024-03-10', status: 'active', capacityPerYear: 7000, vehicleTypes: ['Four Wheeler'], lat: 22.72, lng: 75.86, pincode: '452001' },
+  { rvsfId: 'RVSF-016', name: 'Andhra ELV Processing Centre', state: 'Andhra Pradesh', district: 'Visakhapatnam', registrationDate: '2024-01-05', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 17.69, lng: 83.22, pincode: '530001' },
+  { rvsfId: 'RVSF-017', name: 'Coimbatore Scrap Hub', state: 'Tamil Nadu', district: 'Coimbatore', registrationDate: '2024-04-15', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 11.01, lng: 76.97, pincode: '641001' },
+  { rvsfId: 'RVSF-018', name: 'Bengaluru South Scrap', state: 'Karnataka', district: 'Bengaluru Rural', registrationDate: '2024-05-20', status: 'active', capacityPerYear: 10000, vehicleTypes: ['Four Wheeler'], lat: 12.71, lng: 77.76, pincode: '562106' },
+  { rvsfId: 'RVSF-019', name: 'Ahmedabad ELV Centre', state: 'Gujarat', district: 'Ahmedabad', registrationDate: '2024-06-10', status: 'active', capacityPerYear: 12000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 22.99, lng: 72.63, pincode: '382405' },
+  { rvsfId: 'RVSF-020', name: 'Lucknow Auto Scrap', state: 'Uttar Pradesh', district: 'Lucknow', registrationDate: '2024-07-15', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 26.85, lng: 80.95, pincode: '226001' },
+  { rvsfId: 'RVSF-021', name: 'Bihar Vehicle Scrap - Patna', state: 'Bihar', district: 'Patna', registrationDate: '2024-08-20', status: 'inactive', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 25.60, lng: 85.13, pincode: '800001' },
+  { rvsfId: 'RVSF-022', name: 'Odisha ELV Centre - Bhubaneswar', state: 'Odisha', district: 'Bhubaneswar', registrationDate: '2024-09-10', status: 'inactive', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 20.30, lng: 85.83, pincode: '751001' },
+  { rvsfId: 'RVSF-023', name: 'Gurgaon Scrap Hub', state: 'Haryana', district: 'Gurugram', registrationDate: '2023-04-15', status: 'active', capacityPerYear: 10000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.45, lng: 77.02, pincode: '122004' },
+  { rvsfId: 'RVSF-024', name: 'Faridabad Vehicle Dismantling', state: 'Haryana', district: 'Faridabad', registrationDate: '2023-07-20', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 28.41, lng: 77.31, pincode: '121001' },
+  { rvsfId: 'RVSF-025', name: 'Surat ELV Processing', state: 'Gujarat', district: 'Surat', registrationDate: '2023-10-05', status: 'active', capacityPerYear: 10000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 21.17, lng: 72.83, pincode: '395001' },
+
+  // ── Andhra Pradesh ──
+  { rvsfId: 'AP-001', name: 'Antikythera Dynamics', state: 'Andhra Pradesh', district: 'Anantapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 14.68, lng: 77.60, pincode: '515721' },
+  { rvsfId: 'AP-002', name: 'CYRYBRAL SOFT TECH', state: 'Andhra Pradesh', district: 'Vizianagaram', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 18.12, lng: 83.40, pincode: '535213' },
+  { rvsfId: 'AP-003', name: 'Duggis Vehicle Scrapping', state: 'Andhra Pradesh', district: 'Krishna', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 16.89, lng: 80.10, pincode: '521175' },
+  { rvsfId: 'AP-004', name: 'Hindustan Recycling Hub (AP)', state: 'Andhra Pradesh', district: 'Guntur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5500, vehicleTypes: ['Four Wheeler'], lat: 16.31, lng: 80.45, pincode: '522017' },
+
+  // ── Assam ──
+  { rvsfId: 'AS-001', name: 'ARUN SAHU', state: 'Assam', district: 'Tinsukia', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 27.49, lng: 95.36, pincode: '786146' },
+  { rvsfId: 'AS-002', name: 'AXOM PLATINUM SCRAPPERS', state: 'Assam', district: 'Kamrup Rural', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 26.18, lng: 91.68, pincode: '781031' },
+  { rvsfId: 'AS-003', name: 'HINDUSTAN RECYCLING HUB (AS)', state: 'Assam', district: 'Tinsukia', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 27.36, lng: 95.32, pincode: '786125' },
+  { rvsfId: 'AS-004', name: 'KD ECOSYSTEM', state: 'Assam', district: 'Kamrup Rural', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 26.47, lng: 91.61, pincode: '781354' },
+  { rvsfId: 'AS-005', name: 'Mahindra MSTC Recycling (AS)', state: 'Assam', district: 'Kamrup Rural', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 26.17, lng: 91.66, pincode: '781101' },
+
+  // ── Bihar ──
+  { rvsfId: 'BR-001', name: 'B.K Construction & Co', state: 'Bihar', district: 'Bhagalpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 25.39, lng: 87.10, pincode: '853204' },
+  { rvsfId: 'BR-002', name: 'DHIRAJ KUMAR SINGH', state: 'Bihar', district: 'Saran', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 25.78, lng: 84.75, pincode: '841428' },
+  { rvsfId: 'BR-003', name: 'KNOVEL VENTURES', state: 'Bihar', district: 'Vaishali', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 25.68, lng: 85.22, pincode: '844102' },
+  { rvsfId: 'BR-004', name: 'S K ENTERPRISES (BR)', state: 'Bihar', district: 'Vaishali', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 25.69, lng: 85.24, pincode: '844102' },
+  { rvsfId: 'BR-005', name: 'SRI NEELAYUM PRECOATED STEEL', state: 'Bihar', district: 'Patna', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 25.47, lng: 85.52, pincode: '803202' },
+
+  // ── Chandigarh ──
+  { rvsfId: 'CH-001', name: 'Select Technical Services', state: 'Chandigarh', district: 'Chandigarh', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 30.74, lng: 76.79, pincode: '160002' },
+
+  // ── Chhattisgarh ──
+  { rvsfId: 'CG-001', name: 'AGRAWAL STRUCTURE MILLS', state: 'Chhattisgarh', district: 'Raipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 21.28, lng: 81.70, pincode: '492001' },
+  { rvsfId: 'CG-002', name: 'BHILAI TECHNO', state: 'Chhattisgarh', district: 'Durg', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 21.21, lng: 81.43, pincode: '490026' },
+  { rvsfId: 'CG-003', name: 'CHHATTISGARH ECO RECYCLERS', state: 'Chhattisgarh', district: 'Bastar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 19.08, lng: 82.02, pincode: '494001' },
+  { rvsfId: 'CG-004', name: 'Metal Corporation of India (CG)', state: 'Chhattisgarh', district: 'Raipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 21.25, lng: 81.65, pincode: '492001' },
+  { rvsfId: 'CG-005', name: 'RAIPUR GREEN ENERGY', state: 'Chhattisgarh', district: 'Raipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 21.35, lng: 81.52, pincode: '493111' },
+  { rvsfId: 'CG-006', name: 'S R SCRAPS', state: 'Chhattisgarh', district: 'Durg', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 21.20, lng: 81.42, pincode: '490026' },
+
+  // ── Delhi ──
+  { rvsfId: 'DL-001', name: 'A TO Z VEHICLE SCRAP', state: 'Delhi', district: 'North West Delhi', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.68, lng: 77.14, pincode: '110033' },
+  { rvsfId: 'DL-002', name: 'BHARAT MOTORS (DL)', state: 'Delhi', district: 'South East Delhi', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 28.51, lng: 77.29, pincode: '110044' },
+  { rvsfId: 'DL-003', name: 'EZWASTE RECYCLING', state: 'Delhi', district: 'South East Delhi', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.52, lng: 77.28, pincode: '110044' },
+
+  // ── Goa ──
+  { rvsfId: 'GA-001', name: 'Mangal Iron', state: 'Goa', district: 'North Goa', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 15.40, lng: 74.01, pincode: '403404' },
+
+  // ── Gujarat ──
+  { rvsfId: 'GJ-001', name: 'Baroda Green Sustainable Solutions', state: 'Gujarat', district: 'Vadodara', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 22.59, lng: 73.17, pincode: '391520' },
+  { rvsfId: 'GJ-002', name: 'CMR Kataria Recycling', state: 'Gujarat', district: 'Kheda', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 22.75, lng: 72.55, pincode: '387550' },
+  { rvsfId: 'GJ-003', name: 'Jitendra Recycling', state: 'Gujarat', district: 'Ahmedabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 22.83, lng: 72.15, pincode: '382220' },
+  { rvsfId: 'GJ-004', name: 'KOTHI STEEL', state: 'Gujarat', district: 'Panchmahal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5500, vehicleTypes: ['Four Wheeler'], lat: 22.78, lng: 73.60, pincode: '389001' },
+  { rvsfId: 'GJ-005', name: 'Mahindra MSTC Recycling (GJ)', state: 'Gujarat', district: 'Kheda', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 12000, vehicleTypes: ['Four Wheeler'], lat: 22.76, lng: 72.56, pincode: '387550' },
+  { rvsfId: 'GJ-006', name: 'Mayapuri Trading Corporation', state: 'Gujarat', district: 'Ahmedabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 22.99, lng: 72.64, pincode: '382405' },
+  { rvsfId: 'GJ-007', name: 'MTC BUSINESS', state: 'Gujarat', district: 'Ahmedabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 22.98, lng: 72.38, pincode: '382110' },
+  { rvsfId: 'GJ-008', name: 'SHREE AMBICA AUTOMOTIVE', state: 'Gujarat', district: 'Surat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 21.26, lng: 72.98, pincode: '394180' },
+  { rvsfId: 'GJ-009', name: 'Shuchaye Recyclers', state: 'Gujarat', district: 'Bhavnagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 21.76, lng: 72.15, pincode: '364050' },
+  { rvsfId: 'GJ-010', name: 'TT Recycling Management India', state: 'Gujarat', district: 'Ahmedabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 23.20, lng: 72.50, pincode: '382120' },
+
+  // ── Haryana ──
+  { rvsfId: 'HR-001', name: 'Bagga Link Service', state: 'Haryana', district: 'Sonipat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 28.99, lng: 77.02, pincode: '131021' },
+  { rvsfId: 'HR-002', name: 'BLACK MINING JUNKYARD', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.62, lng: 76.60, pincode: '124107' },
+  { rvsfId: 'HR-003', name: 'CHUNK RECYCLING INDIA', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 28.68, lng: 76.93, pincode: '124507' },
+  { rvsfId: 'HR-004', name: 'COMPETENT RECYCLING SOLUTIONS', state: 'Haryana', district: 'Sonipat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 28.98, lng: 77.01, pincode: '131021' },
+  { rvsfId: 'HR-005', name: 'DEEP SEWAK SCRAPPERS', state: 'Haryana', district: 'Sirsa', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 29.53, lng: 75.03, pincode: '125055' },
+  { rvsfId: 'HR-006', name: 'GANPATI SCRAPPING SOLUTION', state: 'Haryana', district: 'Rewari', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.20, lng: 76.60, pincode: '123106' },
+  { rvsfId: 'HR-007', name: 'HINDUSTAN SCRAP CORPORATION', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5500, vehicleTypes: ['Four Wheeler'], lat: 28.61, lng: 76.65, pincode: '124507' },
+  { rvsfId: 'HR-008', name: 'INDIAN MOTORS (HR)', state: 'Haryana', district: 'Sonipat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.95, lng: 77.05, pincode: '131029' },
+  { rvsfId: 'HR-009', name: 'JOHAR MOTORS', state: 'Haryana', district: 'Palwal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 27.89, lng: 77.37, pincode: '121105' },
+  { rvsfId: 'HR-010', name: 'ABHISHEK K KAIHO RECYCLERS', state: 'Haryana', district: 'Gurugram', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.39, lng: 77.00, pincode: '122105' },
+  { rvsfId: 'HR-011', name: 'NATH JI ENTERPRISES', state: 'Haryana', district: 'Sonipat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.97, lng: 77.03, pincode: '131001' },
+  { rvsfId: 'HR-012', name: 'Neogreenfleet Recycling (HR)', state: 'Haryana', district: 'Gurugram', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 28.46, lng: 77.04, pincode: '122004' },
+  { rvsfId: 'HR-013', name: 'Pineview Technology', state: 'Haryana', district: 'Sonipat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 28.86, lng: 77.02, pincode: '131028' },
+  { rvsfId: 'HR-014', name: 'PKN MOTOR SCRAPPERS', state: 'Haryana', district: 'Sonipat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.94, lng: 77.06, pincode: '131029' },
+  { rvsfId: 'HR-015', name: 'QUICK SCRAP', state: 'Haryana', district: 'Rewari', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.21, lng: 76.80, pincode: '123110' },
+  { rvsfId: 'HR-016', name: 'RE SUSTAINABILITY AND RECYCLING', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 28.72, lng: 76.92, pincode: '124103' },
+  { rvsfId: 'HR-017', name: 'Rosmerta Auto Recycling', state: 'Haryana', district: 'Gurugram', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 7000, vehicleTypes: ['Four Wheeler'], lat: 28.47, lng: 77.04, pincode: '122001' },
+  { rvsfId: 'HR-018', name: 'SAM IMPEX', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.63, lng: 76.61, pincode: '124107' },
+  { rvsfId: 'HR-019', name: 'SCRAP VEHICLE ELV INDIA', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 28.69, lng: 76.94, pincode: '124507' },
+  { rvsfId: 'HR-020', name: 'SERVE UTTAM VENTURES', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.74, lng: 76.88, pincode: '124105' },
+  { rvsfId: 'HR-021', name: 'SG JUNKYARD AND RECYCLING', state: 'Haryana', district: 'Jhajjar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.67, lng: 76.92, pincode: '124507' },
+  { rvsfId: 'HR-022', name: 'SHRI SCRAPER AND RECYCLING CENTRE', state: 'Haryana', district: 'Hisar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 29.16, lng: 75.73, pincode: '125052' },
+  { rvsfId: 'HR-023', name: 'TOTAL WASTE SOLUTION', state: 'Haryana', district: 'Ambala', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 30.38, lng: 76.77, pincode: '133004' },
+  { rvsfId: 'HR-024', name: 'VARDHMAN AUTO RECYCLING', state: 'Haryana', district: 'Palwal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.14, lng: 77.33, pincode: '121102' },
+
+  // ── Himachal Pradesh ──
+  { rvsfId: 'HP-001', name: 'SAHNI ENTERPRISES', state: 'Himachal Pradesh', district: 'Sirmaur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 30.56, lng: 77.30, pincode: '173206' },
+  { rvsfId: 'HP-002', name: 'SCRAP WARRIORS', state: 'Himachal Pradesh', district: 'Hamirpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 31.78, lng: 76.35, pincode: '177301' },
+
+  // ── Jharkhand ──
+  { rvsfId: 'JH-001', name: 'PINEVIEW RECYCLERS', state: 'Jharkhand', district: 'Ranchi', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 23.34, lng: 85.31, pincode: '834002' },
+  { rvsfId: 'JH-002', name: 'PRADEEP KUMAR GUPTA', state: 'Jharkhand', district: 'Ranchi', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 23.37, lng: 85.33, pincode: '834005' },
+  { rvsfId: 'JH-003', name: 'UTKAL AUTOCOACH', state: 'Jharkhand', district: 'West Singhbhum', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 22.60, lng: 85.83, pincode: '833220' },
+
+  // ── Karnataka ──
+  { rvsfId: 'KA-001', name: 'Mahindra MSTC Recycling (KA)', state: 'Karnataka', district: 'Bengaluru Rural', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 10000, vehicleTypes: ['Four Wheeler'], lat: 13.07, lng: 77.52, pincode: '562135' },
+  { rvsfId: 'KA-002', name: 'SUHAS AUTOMOTIVE', state: 'Karnataka', district: 'Tumkur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 13.50, lng: 77.22, pincode: '572129' },
+  { rvsfId: 'KA-003', name: 'TVS MOTOR COMPANY RVSF', state: 'Karnataka', district: 'Bengaluru Urban', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Two Wheeler', 'Three Wheeler'], lat: 12.72, lng: 77.77, pincode: '562106' },
+
+  // ── Kerala ──
+  { rvsfId: 'KL-001', name: 'SILK RVSF NORTH ZONE', state: 'Kerala', district: 'Kannur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 11.87, lng: 75.37, pincode: '670009' },
+  { rvsfId: 'KL-002', name: 'SILK RVSF SOUTH ZONE', state: 'Kerala', district: 'Alappuzha', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 9.69, lng: 76.33, pincode: '688582' },
+  { rvsfId: 'KL-003', name: 'SIMCO RVSF & KSRTC', state: 'Kerala', district: 'Malappuram', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 10.75, lng: 76.08, pincode: '679582' },
+
+  // ── Ladakh ──
+  { rvsfId: 'LA-001', name: 'Ibex Sales Corporation', state: 'Jammu & Kashmir', district: 'Leh', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 1500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 34.16, lng: 77.58, pincode: '194101' },
+
+  // ── Madhya Pradesh ──
+  { rvsfId: 'MP-001', name: 'Emperial Construction', state: 'Madhya Pradesh', district: 'Bhopal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 23.26, lng: 77.41, pincode: '462022' },
+  { rvsfId: 'MP-002', name: 'Kakda Stone Crusher', state: 'Madhya Pradesh', district: 'Bhopal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 23.28, lng: 77.43, pincode: '462023' },
+  { rvsfId: 'MP-003', name: 'MAA REWA ENTERPRISES', state: 'Madhya Pradesh', district: 'Bhopal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 23.63, lng: 77.42, pincode: '463106' },
+  { rvsfId: 'MP-004', name: 'Mahindra MSTC Recycling (MP)', state: 'Madhya Pradesh', district: 'Indore', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 22.72, lng: 75.86, pincode: '453771' },
+  { rvsfId: 'MP-005', name: 'Narmada Enterprises', state: 'Madhya Pradesh', district: 'Jabalpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 23.18, lng: 79.94, pincode: '482004' },
+  { rvsfId: 'MP-006', name: 'Shivam Disposal', state: 'Madhya Pradesh', district: 'Gwalior', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 26.22, lng: 78.18, pincode: '475001' },
+
+  // ── Maharashtra ──
+  { rvsfId: 'MH-001', name: 'Alchemy Recycling', state: 'Maharashtra', district: 'Palghar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 19.65, lng: 73.14, pincode: '421303' },
+  { rvsfId: 'MH-002', name: 'Automotive Manufacturers (Khalapur)', state: 'Maharashtra', district: 'Raigad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 18.78, lng: 73.28, pincode: '410206' },
+  { rvsfId: 'MH-003', name: 'Automotive Manufacturers (Nagpur)', state: 'Maharashtra', district: 'Nagpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 21.16, lng: 79.10, pincode: '440026' },
+  { rvsfId: 'MH-004', name: 'BHAGYALAXMI ROLLING MILL', state: 'Maharashtra', district: 'Jalna', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 19.83, lng: 75.88, pincode: '431213' },
+  { rvsfId: 'MH-005', name: 'BHOSALE AUTOMOTIVE', state: 'Maharashtra', district: 'Pune', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5500, vehicleTypes: ['Four Wheeler'], lat: 18.62, lng: 73.90, pincode: '410501' },
+  { rvsfId: 'MH-006', name: 'B M MOTORS', state: 'Maharashtra', district: 'Pune', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 18.46, lng: 74.60, pincode: '413801' },
+  { rvsfId: 'MH-007', name: 'MADHUBAN TRADE STEELS', state: 'Maharashtra', district: 'Pune', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 6000, vehicleTypes: ['Four Wheeler'], lat: 18.76, lng: 73.86, pincode: '410501' },
+  { rvsfId: 'MH-008', name: 'Mahindra MSTC Recycling (MH)', state: 'Maharashtra', district: 'Thane', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 12000, vehicleTypes: ['Four Wheeler'], lat: 19.31, lng: 73.08, pincode: '421311' },
+  { rvsfId: 'MH-009', name: 'Re Vahaan Recyclers', state: 'Maharashtra', district: 'Nagpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 21.24, lng: 79.18, pincode: '441202' },
+  { rvsfId: 'MH-010', name: 'TATA INTERNATIONAL VEHICLE APPLICATIONS', state: 'Maharashtra', district: 'Pune', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 8000, vehicleTypes: ['Four Wheeler'], lat: 18.64, lng: 73.89, pincode: '410501' },
+
+  // ── Odisha ──
+  { rvsfId: 'OR-001', name: 'Empreo Premium', state: 'Odisha', district: 'Puri', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 20.12, lng: 85.84, pincode: '752055' },
+  { rvsfId: 'OR-002', name: 'PODDAR TYRES', state: 'Odisha', district: 'Jajpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 20.84, lng: 86.33, pincode: '755023' },
+
+  // ── Punjab ──
+  { rvsfId: 'PB-001', name: 'Bless Green Steel', state: 'Punjab', district: 'Ludhiana', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 30.90, lng: 75.87, pincode: '141416' },
+  { rvsfId: 'PB-002', name: 'DADA TRADING COMPANY', state: 'Punjab', district: 'Rupnagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 30.77, lng: 76.50, pincode: '140101' },
+  { rvsfId: 'PB-003', name: 'DIMPLE ASSOCIATES', state: 'Punjab', district: 'Mansa', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 29.99, lng: 75.39, pincode: '151505' },
+  { rvsfId: 'PB-004', name: 'GLOBAL SCRAPPAGE YARDS', state: 'Punjab', district: 'Mohali', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 30.60, lng: 76.80, pincode: '140507' },
+  { rvsfId: 'PB-005', name: 'Junkmunchers (JMELV)', state: 'Punjab', district: 'Patiala', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 30.34, lng: 76.39, pincode: '147021' },
+  { rvsfId: 'PB-006', name: 'Neogreenfleet Recycling (PB)', state: 'Punjab', district: 'Patiala', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 30.48, lng: 76.59, pincode: '140401' },
+  { rvsfId: 'PB-007', name: 'VIKRAM ENTERPRISES (PB)', state: 'Punjab', district: 'Mansa', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 30.00, lng: 75.40, pincode: '151505' },
+
+  // ── Rajasthan ──
+  { rvsfId: 'RJ-001', name: 'Ganganagar Vaahan Udyog', state: 'Rajasthan', district: 'Jaipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 26.90, lng: 75.78, pincode: '303007' },
+  { rvsfId: 'RJ-002', name: 'NIRGUN MOTOR RECYCLERS', state: 'Rajasthan', district: 'Jaipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 26.85, lng: 75.80, pincode: '303348' },
+  { rvsfId: 'RJ-003', name: 'SCRAPIO AUTO', state: 'Rajasthan', district: 'Jaipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 27.40, lng: 75.93, pincode: '303103' },
+  { rvsfId: 'RJ-004', name: 'WORTECH ENGINEERS', state: 'Rajasthan', district: 'Jaipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 26.70, lng: 75.95, pincode: '303904' },
+
+  // ── Tamil Nadu ──
+  { rvsfId: 'TN-001', name: 'MAHINDRA MSTC RECYCLING (TN)', state: 'Tamil Nadu', district: 'Kancheepuram', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 10000, vehicleTypes: ['Four Wheeler'], lat: 12.97, lng: 79.95, pincode: '631604' },
+
+  // ── Telangana ──
+  { rvsfId: 'TS-001', name: 'Amber Enterprises', state: 'Telangana', district: 'Siddipet', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 17.85, lng: 78.60, pincode: '502334' },
+  { rvsfId: 'TS-002', name: 'AUTOTECH SCRAPPERS', state: 'Telangana', district: 'Nandyal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 16.51, lng: 79.87, pincode: '515721' },
+  { rvsfId: 'TS-003', name: 'Sri Harsha Equipments India', state: 'Telangana', district: 'Sangareddy', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 17.55, lng: 78.32, pincode: '502307' },
+
+  // ── Uttarakhand ──
+  { rvsfId: 'UK-001', name: 'GADAR KHARDA', state: 'Uttarakhand', district: 'Haridwar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 29.85, lng: 77.89, pincode: '247668' },
+  { rvsfId: 'UK-002', name: 'GARHWAL SCRAP', state: 'Uttarakhand', district: 'Haridwar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 29.86, lng: 77.90, pincode: '247668' },
+  { rvsfId: 'UK-003', name: 'HONEST RECYCLING', state: 'Uttarakhand', district: 'Haridwar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 29.92, lng: 78.10, pincode: '247663' },
+  { rvsfId: 'UK-004', name: 'RAG Engines', state: 'Uttarakhand', district: 'Haridwar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 29.93, lng: 77.95, pincode: '247661' },
+  { rvsfId: 'UK-005', name: 'SEGA TECH SOLUTION', state: 'Uttarakhand', district: 'Haridwar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 29.84, lng: 77.88, pincode: '247667' },
+
+  // ── Uttar Pradesh (new) ──
+  { rvsfId: 'UP-N001', name: 'AA1 SCRAP CENTER', state: 'Uttar Pradesh', district: 'Muzaffarnagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 29.47, lng: 77.70, pincode: '251308' },
+  { rvsfId: 'UP-N002', name: 'AAKHYA VEHICLE SCRAPPING CENTER', state: 'Uttar Pradesh', district: 'Agra', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 27.18, lng: 78.01, pincode: '282007' },
+  { rvsfId: 'UP-N003', name: 'Agarwal Trading', state: 'Uttar Pradesh', district: 'Kanpur Dehat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 26.15, lng: 79.90, pincode: '209312' },
+  { rvsfId: 'UP-N004', name: 'AGP SCRAPPING SERVICES', state: 'Uttar Pradesh', district: 'Saharanpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 29.97, lng: 77.55, pincode: '247001' },
+  { rvsfId: 'UP-N005', name: 'AMAR TELECOMMUNICATION & CONSTRUCTION', state: 'Uttar Pradesh', district: 'Meerut', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.98, lng: 77.72, pincode: '250002' },
+  { rvsfId: 'UP-N006', name: 'ARUN KUMAR MISHRA', state: 'Uttar Pradesh', district: 'Kanpur Dehat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 26.20, lng: 80.01, pincode: '224172' },
+  { rvsfId: 'UP-N007', name: 'AS SCRAP YARD', state: 'Uttar Pradesh', district: 'Muzaffarnagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 29.46, lng: 77.69, pincode: '251003' },
+  { rvsfId: 'UP-N008', name: 'ASTHA GOEL', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.73, lng: 77.78, pincode: '245101' },
+  { rvsfId: 'UP-N009', name: 'A.S.V. TRADERS', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.40, lng: 77.85, pincode: '203394' },
+  { rvsfId: 'UP-N010', name: 'Atal Scraper', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.41, lng: 77.86, pincode: '203001' },
+  { rvsfId: 'UP-N011', name: 'AZMI ZOYA CONTRACTOR', state: 'Uttar Pradesh', district: 'Azamgarh', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 26.07, lng: 83.18, pincode: '276121' },
+  { rvsfId: 'UP-N012', name: 'BANDHAN AUTO SCRAPING', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.75, lng: 77.30, pincode: '201003' },
+  { rvsfId: 'UP-N013', name: 'Bharat Motor (Sikandrabad)', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 28.45, lng: 77.69, pincode: '203205' },
+  { rvsfId: 'UP-N014', name: 'Bharat Scrap Facilities', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 28.44, lng: 77.70, pincode: '203205' },
+  { rvsfId: 'UP-N015', name: 'BHARAT VEHICLE SCRAP FACILITY', state: 'Uttar Pradesh', district: 'Meerut', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 29.42, lng: 77.68, pincode: '250601' },
+  { rvsfId: 'UP-N016', name: 'BHARAT WASTE MANAGEMENT', state: 'Uttar Pradesh', district: 'Bareilly', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.38, lng: 79.43, pincode: '243201' },
+  { rvsfId: 'UP-N017', name: 'Brawny Minerals', state: 'Uttar Pradesh', district: 'Saharanpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 29.86, lng: 77.91, pincode: '247669' },
+  { rvsfId: 'UP-N018', name: 'buland motors', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.39, lng: 77.84, pincode: '203001' },
+  { rvsfId: 'UP-N019', name: 'CSR MOTOR SCRAPPERS', state: 'Uttar Pradesh', district: 'Gorakhpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 26.76, lng: 83.37, pincode: '273401' },
+  { rvsfId: 'UP-N020', name: 'Dilshad Ahemad', state: 'Uttar Pradesh', district: 'Bijnor', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 29.37, lng: 78.13, pincode: '246734' },
+  { rvsfId: 'UP-N021', name: 'DOSNEXTGEN INDIA', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.74, lng: 77.79, pincode: '245101' },
+  { rvsfId: 'UP-N022', name: 'Dr. Pranjal Patel', state: 'Uttar Pradesh', district: 'Auraiya', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 26.46, lng: 79.51, pincode: '206244' },
+  { rvsfId: 'UP-N023', name: 'Firozabad Vehicle Scrapping Center', state: 'Uttar Pradesh', district: 'Firozabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 27.15, lng: 78.40, pincode: '283203' },
+  { rvsfId: 'UP-N024', name: 'Genesis Vehicle Scrapping', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.72, lng: 77.77, pincode: '245101' },
+  { rvsfId: 'UP-N025', name: 'GLOBAL ULTRA TECH', state: 'Uttar Pradesh', district: 'Rampur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.81, lng: 79.00, pincode: '244921' },
+  { rvsfId: 'UP-N026', name: 'GLOBAL VEHICLE WASTE MANAGEMENT', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.75, lng: 77.80, pincode: '245206' },
+  { rvsfId: 'UP-N027', name: 'GOENKA MOTORS', state: 'Uttar Pradesh', district: 'Varanasi', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 25.32, lng: 83.01, pincode: '221206' },
+  { rvsfId: 'UP-N028', name: 'GO GREEN ELV HANDLERS', state: 'Uttar Pradesh', district: 'Baghpat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.95, lng: 77.22, pincode: '250101' },
+  { rvsfId: 'UP-N029', name: 'GOODVALUE AUTO SCRAP', state: 'Uttar Pradesh', district: 'Muzaffarnagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 29.40, lng: 77.72, pincode: '251203' },
+  { rvsfId: 'UP-N030', name: 'GRAND GLOBAL JUNKYARD', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.71, lng: 77.76, pincode: '245101' },
+  { rvsfId: 'UP-N031', name: 'GREEN INDIA VEHICLE SCRAP', state: 'Uttar Pradesh', district: 'Bareilly', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.36, lng: 79.41, pincode: '243303' },
+  { rvsfId: 'UP-N032', name: 'HERWIN MOTORS INDUSTRY', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.75, lng: 77.30, pincode: '201102' },
+  { rvsfId: 'UP-N033', name: 'INDIA SCRAP ENTERPRISE', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.79, lng: 78.11, pincode: '245205' },
+  { rvsfId: 'UP-N034', name: 'INNOVATION ELEPHANTS', state: 'Uttar Pradesh', district: 'Etawah', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 26.78, lng: 79.02, pincode: '206001' },
+  { rvsfId: 'UP-N035', name: 'IRSHAD MALIK', state: 'Uttar Pradesh', district: 'Aligarh', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 27.88, lng: 78.08, pincode: '202001' },
+  { rvsfId: 'UP-N036', name: 'JAI HIND VEHICLE SCRAP (Moradabad)', state: 'Uttar Pradesh', district: 'Moradabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.84, lng: 78.77, pincode: '244221' },
+  { rvsfId: 'UP-N037', name: 'JAI HIND VEHICLE SCRAP (Hapur)', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.76, lng: 77.81, pincode: '245101' },
+  { rvsfId: 'UP-N038', name: 'KAKA VEHICLE FITNESS', state: 'Uttar Pradesh', district: 'Moradabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler', 'Two Wheeler'], lat: 28.85, lng: 78.78, pincode: '244504' },
+  { rvsfId: 'UP-N039', name: 'KHURJA MOTORS', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.25, lng: 77.85, pincode: '203131' },
+  { rvsfId: 'UP-N040', name: 'KUSEDI AZ RECYCLING', state: 'Uttar Pradesh', district: 'Badaun', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.07, lng: 79.09, pincode: '243638' },
+  { rvsfId: 'UP-N041', name: 'LDR TRADERS', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 28.80, lng: 78.12, pincode: '245205' },
+  { rvsfId: 'UP-N042', name: 'LHP AWADH SCRAPPING FACILITY', state: 'Uttar Pradesh', district: 'Sitapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 27.56, lng: 80.68, pincode: '261001' },
+  { rvsfId: 'UP-N043', name: 'Mahindra MSTC Recycling (UP)', state: 'Uttar Pradesh', district: 'Gautam Buddh Nagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 10000, vehicleTypes: ['Four Wheeler'], lat: 28.47, lng: 77.50, pincode: '201306' },
+  { rvsfId: 'UP-N044', name: 'MANGALMURTYE ENTERPRISES', state: 'Uttar Pradesh', district: 'Lalitpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 24.69, lng: 78.41, pincode: '284121' },
+  { rvsfId: 'UP-N045', name: 'MANI FLOUR MILL', state: 'Uttar Pradesh', district: 'Raebareli', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 26.23, lng: 81.24, pincode: '229303' },
+  { rvsfId: 'UP-N046', name: 'MARUTI SUZUKI TOYOTSU INDIA (MSTI)', state: 'Uttar Pradesh', district: 'Gautam Buddh Nagar', registrationDate: '2022-03-01', status: 'active', capacityPerYear: 25000, vehicleTypes: ['Four Wheeler', 'Two Wheeler', 'Three Wheeler'], lat: 28.54, lng: 77.39, pincode: '201305' },
+  { rvsfId: 'UP-N047', name: 'MINERAL OIL COMPANY', state: 'Uttar Pradesh', district: 'Raebareli', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 26.24, lng: 81.25, pincode: '209305' },
+  { rvsfId: 'UP-N048', name: 'Mohd Shadik', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 28.26, lng: 77.86, pincode: '203131' },
+  { rvsfId: 'UP-N049', name: 'Mohit Agencies', state: 'Uttar Pradesh', district: 'Kanpur Dehat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 26.16, lng: 79.91, pincode: '209304' },
+  { rvsfId: 'UP-N050', name: 'Moto Scrapland', state: 'Uttar Pradesh', district: 'Barabanki', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 26.93, lng: 81.20, pincode: '225203' },
+  { rvsfId: 'UP-N051', name: 'M/S GOPALA CHATURVEDI', state: 'Uttar Pradesh', district: 'Mathura', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 27.49, lng: 77.52, pincode: '281403' },
+  { rvsfId: 'UP-N052', name: 'M/S GREEN AUTO SCRAPPING', state: 'Uttar Pradesh', district: 'Agra', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 27.19, lng: 78.02, pincode: '282007' },
+  { rvsfId: 'UP-N053', name: 'M/S RAJ COMPANY', state: 'Uttar Pradesh', district: 'Lakhimpur Kheri', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 27.95, lng: 80.78, pincode: '262701' },
+  { rvsfId: 'UP-N054', name: 'M/S SHASTA TRADERS', state: 'Uttar Pradesh', district: 'Firozabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 27.16, lng: 78.41, pincode: '283203' },
+  { rvsfId: 'UP-N055', name: 'MTQ Traders', state: 'Uttar Pradesh', district: 'Muzaffarnagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 29.48, lng: 77.71, pincode: '251003' },
+  { rvsfId: 'UP-N056', name: 'National Enterprises (UP)', state: 'Uttar Pradesh', district: 'Rampur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 28.70, lng: 79.08, pincode: '244924' },
+  { rvsfId: 'UP-N057', name: 'NEW HINDUSTAN SCRAPE TRADING', state: 'Uttar Pradesh', district: 'Aligarh', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 27.89, lng: 78.09, pincode: '202002' },
+  { rvsfId: 'UP-N058', name: 'NEXT LIFE SCRAP INDIA', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.68, lng: 77.46, pincode: '201003' },
+  { rvsfId: 'UP-N059', name: 'NIRVANA SCRAPPERS', state: 'Uttar Pradesh', district: 'Baghpat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.96, lng: 77.23, pincode: '250101' },
+  { rvsfId: 'UP-N060', name: 'NS Vehicle Scrap', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.42, lng: 77.87, pincode: '203395' },
+  { rvsfId: 'UP-N061', name: 'P S Enterprises', state: 'Uttar Pradesh', district: 'Lucknow', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 26.86, lng: 80.96, pincode: '226401' },
+  { rvsfId: 'UP-N062', name: 'Purvanchal Auto Scrap & Recycling Centre', state: 'Uttar Pradesh', district: 'Ghazipur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 25.58, lng: 83.57, pincode: '233304' },
+  { rvsfId: 'UP-N063', name: 'RAJ ASSOCIATES', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.60, lng: 78.07, pincode: '245412' },
+  { rvsfId: 'UP-N064', name: 'RATANGARH VEHICLE SCRAP', state: 'Uttar Pradesh', district: 'Bijnor', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 29.38, lng: 78.14, pincode: '246734' },
+  { rvsfId: 'UP-N065', name: 'RK SWIFT SOLUTION', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.76, lng: 77.31, pincode: '201102' },
+  { rvsfId: 'UP-N066', name: 'Royal Motors (Baghpat)', state: 'Uttar Pradesh', district: 'Baghpat', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.97, lng: 77.24, pincode: '250609' },
+  { rvsfId: 'UP-N067', name: 'ROYAL RECYCLING INDUSTRIES', state: 'Uttar Pradesh', district: 'Bulandshahr', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.27, lng: 77.87, pincode: '203131' },
+  { rvsfId: 'UP-N068', name: 'ROYAL VEHICLE ENTERPRISES', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.74, lng: 77.82, pincode: '245101' },
+  { rvsfId: 'UP-N069', name: 'RR&R MANTECH', state: 'Uttar Pradesh', district: 'Sambhal', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.58, lng: 78.57, pincode: '244302' },
+  { rvsfId: 'UP-N070', name: 'RUDRA TRADING COMPANY', state: 'Uttar Pradesh', district: 'Muzaffarnagar', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 29.49, lng: 77.72, pincode: '251003' },
+  { rvsfId: 'UP-N071', name: 'SARAL AUTO SCRAPING INDIA', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.69, lng: 77.47, pincode: '201003' },
+  { rvsfId: 'UP-N072', name: 'Scrapvenger ELV India', state: 'Uttar Pradesh', district: 'Lucknow', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 26.75, lng: 81.10, pincode: '226301' },
+  { rvsfId: 'UP-N073', name: 'SEVEN STAR AUTO SCRAPING INDIA', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.70, lng: 77.48, pincode: '201003' },
+  { rvsfId: 'UP-N074', name: 'SHEEBA UDYOG RECYCLING', state: 'Uttar Pradesh', district: 'Hapur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.77, lng: 77.83, pincode: '245301' },
+  { rvsfId: 'UP-N075', name: 'SHESHDHER SINGH', state: 'Uttar Pradesh', district: 'Meerut', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.74, lng: 77.79, pincode: '245206' },
+  { rvsfId: 'UP-N076', name: 'SHREE ENTERPRISES (LKO)', state: 'Uttar Pradesh', district: 'Lucknow', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 26.76, lng: 81.11, pincode: '226301' },
+  { rvsfId: 'UP-N077', name: 'shri ji agro engineering works', state: 'Uttar Pradesh', district: 'Agra', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 27.20, lng: 78.03, pincode: '283124' },
+  { rvsfId: 'UP-N078', name: 'Simran Recyclings', state: 'Uttar Pradesh', district: 'Saharanpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 29.98, lng: 77.56, pincode: '247001' },
+  { rvsfId: 'UP-N079', name: 'SPARKGREEN UDHYOG RECYCLING', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.83, lng: 77.60, pincode: '201204' },
+  { rvsfId: 'UP-N080', name: 'SPR SCRAP CENTRE', state: 'Uttar Pradesh', district: 'Gorakhpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 26.77, lng: 83.38, pincode: '273001' },
+  { rvsfId: 'UP-N081', name: 'SSENTERPRISE', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.66, lng: 77.44, pincode: '201102' },
+  { rvsfId: 'UP-N082', name: 'SUNRICE SCRAP CENTER', state: 'Uttar Pradesh', district: 'Shahjahanpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 27.88, lng: 79.91, pincode: '242301' },
+  { rvsfId: 'UP-N083', name: 'THSILDAR SINGH SECURITIES', state: 'Uttar Pradesh', district: 'Gorakhpur', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 26.78, lng: 83.39, pincode: '273015' },
+  { rvsfId: 'UP-N084', name: 'UNION VEHICLE SCRAP', state: 'Uttar Pradesh', district: 'Moradabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 28.86, lng: 78.79, pincode: '244102' },
+  { rvsfId: 'UP-N085', name: 'UNITED IRON & STEEL CORP.', state: 'Uttar Pradesh', district: 'Aligarh', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 27.90, lng: 78.10, pincode: '202001' },
+  { rvsfId: 'UP-N086', name: 'U S ENTERPRISES', state: 'Uttar Pradesh', district: 'Bijnor', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 29.39, lng: 78.15, pincode: '246761' },
+  { rvsfId: 'UP-N087', name: 'VARUN PACKERS', state: 'Uttar Pradesh', district: 'Agra', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 27.21, lng: 78.04, pincode: '283135' },
+  { rvsfId: 'UP-N088', name: 'VIKKY SAINI', state: 'Uttar Pradesh', district: 'Moradabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 2500, vehicleTypes: ['Four Wheeler'], lat: 28.87, lng: 78.80, pincode: '244001' },
+  { rvsfId: 'UP-N089', name: 'VIRAT SCRAPPERS', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3500, vehicleTypes: ['Four Wheeler'], lat: 28.77, lng: 77.32, pincode: '201102' },
+  { rvsfId: 'UP-N090', name: 'V VENTURES', state: 'Uttar Pradesh', district: 'Agra', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 3000, vehicleTypes: ['Four Wheeler'], lat: 27.17, lng: 78.00, pincode: '282006' },
+  { rvsfId: 'UP-N091', name: 'YGA STAR AUTO SCRAPPING CENTRE', state: 'Uttar Pradesh', district: 'Ghaziabad', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 28.67, lng: 77.45, pincode: '201003' },
+
+  // ── West Bengal ──
+  { rvsfId: 'WB-001', name: 'Bengal Recycling Hub', state: 'West Bengal', district: 'Hooghly', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 22.90, lng: 88.39, pincode: '712305' },
+  { rvsfId: 'WB-002', name: 'Eccel Exports', state: 'West Bengal', district: 'Howrah', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4500, vehicleTypes: ['Four Wheeler'], lat: 22.47, lng: 88.07, pincode: '711306' },
+  { rvsfId: 'WB-003', name: 'Hollyhocks India', state: 'West Bengal', district: 'South 24 Parganas', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 4000, vehicleTypes: ['Four Wheeler'], lat: 22.20, lng: 88.45, pincode: '743387' },
+  { rvsfId: 'WB-004', name: 'Selladale Synergies India', state: 'West Bengal', district: 'Nadia', registrationDate: '2024-01-01', status: 'active', capacityPerYear: 5000, vehicleTypes: ['Four Wheeler'], lat: 22.98, lng: 88.44, pincode: '741234' },
+];
+
+// RVSF Collection Data — Vahan portal realistic totals:
+// FY 2021-22: ~45K national | FY 2022-23: ~108K | FY 2023-24: ~193K | FY 2024-25: ~320K
+const _baseElvRvsfCollectionData: ELVRVSFCollection[] = [
+  // FY 2021-22 — national ~45,000 (RVSF policy nascent, pilot RVSFs only)
+  { rvsfId: 'RVSF-005', state: 'Delhi', fyYear: '2021-22', vehiclesCollected: 13000 },
+  { rvsfId: 'RVSF-001', state: 'Uttar Pradesh', fyYear: '2021-22', vehiclesCollected: 4000 },
+  { rvsfId: 'RVSF-004', state: 'Maharashtra', fyYear: '2021-22', vehiclesCollected: 6000 },
+  { rvsfId: 'RVSF-006', state: 'Haryana', fyYear: '2021-22', vehiclesCollected: 3000 },
+  { rvsfId: 'RVSF-002', state: 'Gujarat', fyYear: '2021-22', vehiclesCollected: 5000 },
+  { rvsfId: 'RVSF-003', state: 'Karnataka', fyYear: '2021-22', vehiclesCollected: 4500 },
+  { rvsfId: 'RVSF-007', state: 'Tamil Nadu', fyYear: '2021-22', vehiclesCollected: 3500 },
+  { rvsfId: 'RVSF-008', state: 'Telangana', fyYear: '2021-22', vehiclesCollected: 2500 },
+  { rvsfId: 'RVSF-009', state: 'West Bengal', fyYear: '2021-22', vehiclesCollected: 2000 },
+  { rvsfId: 'RVSF-010', state: 'Rajasthan', fyYear: '2021-22', vehiclesCollected: 1500 },
+  // FY 2022-23 — national ~108,000 (rapid scale-up, new registrations)
+  { rvsfId: 'RVSF-005', state: 'Delhi', fyYear: '2022-23', vehiclesCollected: 15000 },
+  { rvsfId: 'RVSF-001', state: 'Uttar Pradesh', fyYear: '2022-23', vehiclesCollected: 9000 },
+  { rvsfId: 'RVSF-020', state: 'Uttar Pradesh', fyYear: '2022-23', vehiclesCollected: 4500 },
+  { rvsfId: 'RVSF-004', state: 'Maharashtra', fyYear: '2022-23', vehiclesCollected: 12000 },
+  { rvsfId: 'RVSF-013', state: 'Maharashtra', fyYear: '2022-23', vehiclesCollected: 8000 },
+  { rvsfId: 'RVSF-006', state: 'Haryana', fyYear: '2022-23', vehiclesCollected: 7000 },
+  { rvsfId: 'RVSF-023', state: 'Haryana', fyYear: '2022-23', vehiclesCollected: 4000 },
+  { rvsfId: 'RVSF-024', state: 'Haryana', fyYear: '2022-23', vehiclesCollected: 3500 },
+  { rvsfId: 'RVSF-002', state: 'Gujarat', fyYear: '2022-23', vehiclesCollected: 10000 },
+  { rvsfId: 'RVSF-025', state: 'Gujarat', fyYear: '2022-23', vehiclesCollected: 4500 },
+  { rvsfId: 'RVSF-003', state: 'Karnataka', fyYear: '2022-23', vehiclesCollected: 9000 },
+  { rvsfId: 'RVSF-007', state: 'Tamil Nadu', fyYear: '2022-23', vehiclesCollected: 7000 },
+  { rvsfId: 'RVSF-008', state: 'Telangana', fyYear: '2022-23', vehiclesCollected: 5000 },
+  { rvsfId: 'RVSF-009', state: 'West Bengal', fyYear: '2022-23', vehiclesCollected: 4000 },
+  { rvsfId: 'RVSF-010', state: 'Rajasthan', fyYear: '2022-23', vehiclesCollected: 3000 },
+  { rvsfId: 'RVSF-011', state: 'Punjab', fyYear: '2022-23', vehiclesCollected: 2500 },
+  // FY 2023-24 — national ~193,000 (gov incentive scheme + FAME-III push)
+  { rvsfId: 'RVSF-005', state: 'Delhi', fyYear: '2023-24', vehiclesCollected: 22000 },
+  { rvsfId: 'RVSF-001', state: 'Uttar Pradesh', fyYear: '2023-24', vehiclesCollected: 13000 },
+  { rvsfId: 'RVSF-020', state: 'Uttar Pradesh', fyYear: '2023-24', vehiclesCollected: 7000 },
+  { rvsfId: 'RVSF-004', state: 'Maharashtra', fyYear: '2023-24', vehiclesCollected: 16000 },
+  { rvsfId: 'RVSF-013', state: 'Maharashtra', fyYear: '2023-24', vehiclesCollected: 12000 },
+  { rvsfId: 'RVSF-014', state: 'Maharashtra', fyYear: '2023-24', vehiclesCollected: 5000 },
+  { rvsfId: 'RVSF-006', state: 'Haryana', fyYear: '2023-24', vehiclesCollected: 9000 },
+  { rvsfId: 'RVSF-023', state: 'Haryana', fyYear: '2023-24', vehiclesCollected: 5500 },
+  { rvsfId: 'RVSF-024', state: 'Haryana', fyYear: '2023-24', vehiclesCollected: 5500 },
+  { rvsfId: 'RVSF-002', state: 'Gujarat', fyYear: '2023-24', vehiclesCollected: 12000 },
+  { rvsfId: 'RVSF-019', state: 'Gujarat', fyYear: '2023-24', vehiclesCollected: 6000 },
+  { rvsfId: 'RVSF-025', state: 'Gujarat', fyYear: '2023-24', vehiclesCollected: 7000 },
+  { rvsfId: 'RVSF-003', state: 'Karnataka', fyYear: '2023-24', vehiclesCollected: 12000 },
+  { rvsfId: 'RVSF-018', state: 'Karnataka', fyYear: '2023-24', vehiclesCollected: 5000 },
+  { rvsfId: 'RVSF-007', state: 'Tamil Nadu', fyYear: '2023-24', vehiclesCollected: 10000 },
+  { rvsfId: 'RVSF-017', state: 'Tamil Nadu', fyYear: '2023-24', vehiclesCollected: 6000 },
+  { rvsfId: 'RVSF-008', state: 'Telangana', fyYear: '2023-24', vehiclesCollected: 9000 },
+  { rvsfId: 'RVSF-016', state: 'Andhra Pradesh', fyYear: '2023-24', vehiclesCollected: 5000 },
+  { rvsfId: 'RVSF-009', state: 'West Bengal', fyYear: '2023-24', vehiclesCollected: 7000 },
+  { rvsfId: 'RVSF-010', state: 'Rajasthan', fyYear: '2023-24', vehiclesCollected: 5000 },
+  { rvsfId: 'RVSF-011', state: 'Punjab', fyYear: '2023-24', vehiclesCollected: 4000 },
+  { rvsfId: 'RVSF-012', state: 'Kerala', fyYear: '2023-24', vehiclesCollected: 6000 },
+  { rvsfId: 'RVSF-015', state: 'Madhya Pradesh', fyYear: '2023-24', vehiclesCollected: 4000 },
+  // FY 2024-25 — national ~320,000 (mature ecosystem, 25 active RVSFs)
+  { rvsfId: 'RVSF-005', state: 'Delhi', fyYear: '2024-25', vehiclesCollected: 33000 },
+  { rvsfId: 'RVSF-001', state: 'Uttar Pradesh', fyYear: '2024-25', vehiclesCollected: 20000 },
+  { rvsfId: 'RVSF-020', state: 'Uttar Pradesh', fyYear: '2024-25', vehiclesCollected: 12000 },
+  { rvsfId: 'RVSF-004', state: 'Maharashtra', fyYear: '2024-25', vehiclesCollected: 25000 },
+  { rvsfId: 'RVSF-013', state: 'Maharashtra', fyYear: '2024-25', vehiclesCollected: 20000 },
+  { rvsfId: 'RVSF-014', state: 'Maharashtra', fyYear: '2024-25', vehiclesCollected: 9000 },
+  { rvsfId: 'RVSF-006', state: 'Haryana', fyYear: '2024-25', vehiclesCollected: 14000 },
+  { rvsfId: 'RVSF-023', state: 'Haryana', fyYear: '2024-25', vehiclesCollected: 10000 },
+  { rvsfId: 'RVSF-024', state: 'Haryana', fyYear: '2024-25', vehiclesCollected: 7500 },
+  { rvsfId: 'RVSF-002', state: 'Gujarat', fyYear: '2024-25', vehiclesCollected: 20000 },
+  { rvsfId: 'RVSF-019', state: 'Gujarat', fyYear: '2024-25', vehiclesCollected: 12000 },
+  { rvsfId: 'RVSF-025', state: 'Gujarat', fyYear: '2024-25', vehiclesCollected: 10000 },
+  { rvsfId: 'RVSF-003', state: 'Karnataka', fyYear: '2024-25', vehiclesCollected: 20000 },
+  { rvsfId: 'RVSF-018', state: 'Karnataka', fyYear: '2024-25', vehiclesCollected: 10000 },
+  { rvsfId: 'RVSF-007', state: 'Tamil Nadu', fyYear: '2024-25', vehiclesCollected: 18000 },
+  { rvsfId: 'RVSF-017', state: 'Tamil Nadu', fyYear: '2024-25', vehiclesCollected: 8000 },
+  { rvsfId: 'RVSF-008', state: 'Telangana', fyYear: '2024-25', vehiclesCollected: 14000 },
+  { rvsfId: 'RVSF-016', state: 'Andhra Pradesh', fyYear: '2024-25', vehiclesCollected: 8000 },
+  { rvsfId: 'RVSF-009', state: 'West Bengal', fyYear: '2024-25', vehiclesCollected: 12000 },
+  { rvsfId: 'RVSF-010', state: 'Rajasthan', fyYear: '2024-25', vehiclesCollected: 8000 },
+  { rvsfId: 'RVSF-011', state: 'Punjab', fyYear: '2024-25', vehiclesCollected: 7000 },
+  { rvsfId: 'RVSF-012', state: 'Kerala', fyYear: '2024-25', vehiclesCollected: 10000 },
+  { rvsfId: 'RVSF-015', state: 'Madhya Pradesh', fyYear: '2024-25', vehiclesCollected: 7000 },
+  { rvsfId: 'RVSF-021', state: 'Bihar', fyYear: '2024-25', vehiclesCollected: 3000 },
+  { rvsfId: 'RVSF-022', state: 'Odisha', fyYear: '2024-25', vehiclesCollected: 2500 },
+];
+
+export const elvRvsfCollectionData: ELVRVSFCollection[] = _baseElvRvsfCollectionData.map(entry => {
+  const override = _elvCollectionOverrides[entry.fyYear]?.[entry.rvsfId];
+  return override !== undefined ? { ...entry, vehiclesCollected: override } : entry;
+});
+
+export const elvOriginData: ELVOriginDataPoint[] = [
+  // FY 2022-23
+  { originState: 'Delhi', makeYear: 2007, fyYearScrapped: '2022-23', vehicleCount: 8500 },
+  { originState: 'Delhi', makeYear: 2008, fyYearScrapped: '2022-23', vehicleCount: 9800 },
+  { originState: 'Maharashtra', makeYear: 2006, fyYearScrapped: '2022-23', vehicleCount: 6200 },
+  { originState: 'Maharashtra', makeYear: 2007, fyYearScrapped: '2022-23', vehicleCount: 7300 },
+  { originState: 'Uttar Pradesh', makeYear: 2007, fyYearScrapped: '2022-23', vehicleCount: 5100 },
+  { originState: 'Gujarat', makeYear: 2008, fyYearScrapped: '2022-23', vehicleCount: 4800 },
+  { originState: 'Haryana', makeYear: 2007, fyYearScrapped: '2022-23', vehicleCount: 4200 },
+  { originState: 'Karnataka', makeYear: 2008, fyYearScrapped: '2022-23', vehicleCount: 4600 },
+  { originState: 'Tamil Nadu', makeYear: 2007, fyYearScrapped: '2022-23', vehicleCount: 3900 },
+  { originState: 'Telangana', makeYear: 2008, fyYearScrapped: '2022-23', vehicleCount: 3200 },
+  { originState: 'West Bengal', makeYear: 2007, fyYearScrapped: '2022-23', vehicleCount: 2800 },
+  { originState: 'Rajasthan', makeYear: 2008, fyYearScrapped: '2022-23', vehicleCount: 2100 },
+  // FY 2023-24
+  { originState: 'Delhi', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 14000 },
+  { originState: 'Delhi', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 12000 },
+  { originState: 'Maharashtra', makeYear: 2007, fyYearScrapped: '2023-24', vehicleCount: 12500 },
+  { originState: 'Maharashtra', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 11000 },
+  { originState: 'Maharashtra', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 9500 },
+  { originState: 'Uttar Pradesh', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 9000 },
+  { originState: 'Uttar Pradesh', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 7800 },
+  { originState: 'Gujarat', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 9500 },
+  { originState: 'Gujarat', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 8200 },
+  { originState: 'Haryana', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 8000 },
+  { originState: 'Karnataka', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 8500 },
+  { originState: 'Tamil Nadu', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 7500 },
+  { originState: 'Telangana', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 5800 },
+  { originState: 'West Bengal', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 4800 },
+  { originState: 'Rajasthan', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 4000 },
+  { originState: 'Punjab', makeYear: 2008, fyYearScrapped: '2023-24', vehicleCount: 3500 },
+  { originState: 'Kerala', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 4500 },
+  { originState: 'Madhya Pradesh', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 3000 },
+  { originState: 'Andhra Pradesh', makeYear: 2009, fyYearScrapped: '2023-24', vehicleCount: 3200 },
+  // FY 2024-25
+  { originState: 'Delhi', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 20000 },
+  { originState: 'Delhi', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 15000 },
+  { originState: 'Maharashtra', makeYear: 2008, fyYearScrapped: '2024-25', vehicleCount: 18000 },
+  { originState: 'Maharashtra', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 20000 },
+  { originState: 'Maharashtra', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 16000 },
+  { originState: 'Uttar Pradesh', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 14000 },
+  { originState: 'Uttar Pradesh', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 12000 },
+  { originState: 'Gujarat', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 13500 },
+  { originState: 'Gujarat', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 11000 },
+  { originState: 'Haryana', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 11000 },
+  { originState: 'Haryana', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 9500 },
+  { originState: 'Karnataka', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 13000 },
+  { originState: 'Karnataka', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 10000 },
+  { originState: 'Tamil Nadu', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 12000 },
+  { originState: 'Tamil Nadu', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 9500 },
+  { originState: 'Telangana', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 8500 },
+  { originState: 'Telangana', makeYear: 2010, fyYearScrapped: '2024-25', vehicleCount: 7000 },
+  { originState: 'West Bengal', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 7000 },
+  { originState: 'Rajasthan', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 5500 },
+  { originState: 'Punjab', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 5000 },
+  { originState: 'Kerala', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 6500 },
+  { originState: 'Madhya Pradesh', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 4500 },
+  { originState: 'Andhra Pradesh', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 4800 },
+  { originState: 'Bihar', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 2000 },
+  { originState: 'Odisha', makeYear: 2009, fyYearScrapped: '2024-25', vehicleCount: 1800 },
+];
+
+// ELV AI Insights
+export const elvAIInsights: AIInsight[] = [
+  {
+    id: 1,
+    suggestion: 'Massive ELV wave incoming FY 2026-27. Vehicles sold in peak FY 2010-12 (~8.3M units) reach 15-year threshold. Prioritize greenfield RVSF approvals in Maharashtra, UP, and Delhi NCR within 18 months.',
+    impact: 'high',
+    category: 'Capacity Planning',
+    source: 'SIAM Sales Historical Data + RVSF Registry (Vahan Portal)',
+    reasoning: 'Current national RVSF capacity (~330K/year) covers only 4% of the incoming ELV wave. Without scale-up, 96% will be informally scrapped with zero environmental controls.',
+  },
+  {
+    id: 2,
+    suggestion: 'Bihar, Odisha, and Chhattisgarh have zero active RVSFs despite significant ELV populations. Fast-track licensing using hub-and-spoke model with satellite collection centres in these states.',
+    impact: 'high',
+    category: 'Infrastructure Gap',
+    source: 'RVSF Registry Analysis + SIAM State Sales Data',
+    reasoning: 'Combined ~6M vehicles sold FY 2005-12 in these three states have no formal scrapping pathway. All informal scrapping generates zero EPR credits and zero environmental controls.',
+  },
+  {
+    id: 3,
+    suggestion: 'Replicate Delhi NCR RVSF model in Bengaluru, Hyderabad, and Pune. Delhi shows highest collection rate (82% of ELV target) — document this playbook for scale.',
+    impact: 'medium',
+    category: 'Best Practice Replication',
+    source: 'Delhi RVSF Performance Data + National Benchmarking',
+    reasoning: 'Delhi\'s success driven by 3+ active RVSFs, enforcement of ELV policy, and proximity to high-density vehicle population. Other metros have similar conditions but lower coverage.',
+  },
+  {
+    id: 4,
+    suggestion: 'National ELV collection gap represents a Rs. 12,400 Cr recoverable material opportunity annually. Align RVSF expansion with EPR credit targets to create private operator financial incentives.',
+    impact: 'medium',
+    category: 'Economic Opportunity',
+    source: 'Material Value Analysis + EPR Framework',
+    reasoning: '94.2% of ELV-age vehicles are unaccounted. Each scrapped vehicle yields ~Rs. 45,000 in steel/aluminium/component value. Closing 50% of the gap equals Rs. 12,400 Cr in annual recoverable value.',
+  },
+  {
+    id: 5,
+    suggestion: 'Steel recovery from ELVs is priced at ₹28/kg scrap vs ₹62/kg virgin equivalent — a 55% discount that erodes RVSF margins. Negotiate OEM buy-back agreements or index scrap prices to LME HMS benchmarks to stabilise revenue.',
+    impact: 'high',
+    category: 'Material Pricing',
+    source: 'Steel Scrap Market Data (MSTC) + LME HMS Index',
+    reasoning: 'ELV-grade steel (HMS 1&2 mix) trades at steep discount to primary steel. OEM buy-back contracts eliminate spot-price volatility and guarantee volume, improving RVSF unit economics by an estimated 18-22%.',
+  },
+  {
+    id: 6,
+    suggestion: 'Aluminium recovery per scrapped car averages 48 kg at ₹95/kg — highest per-kg margin material in the ELV stream. Upgrade dismantling lines in top-5 RVSFs to improve Al separation yield from current ~62% to 85%+.',
+    impact: 'high',
+    category: 'Material Recovery',
+    source: 'RVSF Dismantling Yield Data + Aluminium Association of India',
+    reasoning: 'Every 1% improvement in Al recovery yield adds ₹456/vehicle margin. At 50,000 vehicles/year throughput, 23pp yield improvement = ₹5.2 Cr additional annual revenue per RVSF without volume growth.',
+  },
+  {
+    id: 7,
+    suggestion: 'Lithium-ion battery ELV volumes will surge from 2026 as EV fleet ages. Establish Li-ion pre-processing partnerships with battery recyclers now — RVSF licences currently do not cover battery shredding under BMSW rules.',
+    impact: 'high',
+    category: 'Emerging Waste Stream',
+    source: 'SMEV EV Sales Data + CPCB BMSW Rules 2022',
+    reasoning: 'India sold 1.5M EVs in FY 2021-22; 3-5 year battery replacement cycle means ~500K packs enter waste stream FY 2024-27. Each Li-ion pack has ₹8,000-18,000 recoverable value but requires separate CPCB authorisation.',
+  },
+  {
+    id: 8,
+    suggestion: 'UP and Maharashtra account for 38% of national ELV stock but only 22% of registered RVSFs. Targeting 8 new RVSF approvals in Lucknow, Agra, Pune, and Nashik corridors would reduce average vehicle-to-RVSF distance by 40 km.',
+    impact: 'medium',
+    category: 'Geographic Concentration',
+    source: 'Vahan Registration Data + RVSF Geospatial Analysis',
+    reasoning: 'High vehicle-to-RVSF distance (>80 km) is the #1 stated reason owners avoid formal scrapping — transport cost eats into the Deposit of Recycling Fee benefit. Closer facilities increase formal capture rate by est. 15-28%.',
+  },
+  {
+    id: 9,
+    suggestion: 'Plastic recovery from ELVs (avg. 35 kg/vehicle, ₹42/kg) is largely bypassed due to mixed polymer content. Invest in NIR-based sorting at 3-4 high-volume RVSFs to separate PP/ABS/PVC and access recycler premium pricing (+₹18-25/kg).',
+    impact: 'medium',
+    category: 'Material Pricing',
+    source: 'Polymer Market Index (CRISIL) + RVSF Plastic Recovery Audit',
+    reasoning: 'Mixed automotive plastic fetches ₹42/kg; sorted PP commands ₹60/kg, ABS ₹67/kg. NIR sorter capex (~₹35L) payback is 14 months at 10,000+ vehicles/year throughput — viable for top-tier RVSFs.',
+  },
+  {
+    id: 10,
+    suggestion: 'Rubber (tyres + seals) constitutes ~65 kg/vehicle and is currently sold at ₹12/kg to informal pyrolysis units. Redirect to CPCB-authorised co-processing cement kilns at ₹18-22/kg — 50-83% price uplift with full regulatory compliance.',
+    impact: 'medium',
+    category: 'Compliance + Revenue',
+    source: 'CPCB Authorised Co-processor List + Tyre Rubber Price Index',
+    reasoning: 'Informal rubber pyrolysis generates uncontrolled emissions and exposes RVSFs to regulatory risk. Cement kiln co-processing is authorised under HW Rules 2016, commands a premium, and generates co-processing certificates useful for EPR reporting.',
+  },
+];
+
+// Brand share multipliers for logical sample data
+const brandMultipliers: Record<string, number> = {
+  'Maruti Suzuki': 0.45,
+  'Hyundai': 0.15,
+  'Tata': 0.12,
+  'Mahindra': 0.10,
+  'Kia': 0.05,
+  'Toyota': 0.05,
+  'Honda': 0.03,
+  'Others': 0.05,
+};
+
+// Helper: Convert FY string to end calendar year (e.g., '2009-10' -> 2010)
+const fyToEndYear = (fy: string): number => {
+  const parts = fy.split('-');
+  const startYear = parseInt(parts[0]);
+  return startYear + 1;
+};
+
+// Helper: Convert end calendar year to FY string (e.g., 2010 -> '2009-10')
+const endYearToFY = (year: number): string => {
+  return `${year - 1}-${String(year).slice(-2)}`;
+};
+
+// Get ELV lag FY: for selectedFY '2024-25' and lag 15, returns '2009-10'
+export const getELVLagFY = (selectedFY: string, lagYears: number): string => {
+  const endYear = fyToEndYear(selectedFY);
+  return endYearToFY(endYear - lagYears);
+};
+
+// Get SIAM sales by state for a given FY
+export const getELVSalesByState = (fyYear: string, brands: string[] = ['All']): Record<string, number> => {
+  const result: Record<string, number> = {};
+  let multiplier = 1;
+  if (brands.length > 0 && !brands.includes('All')) {
+    multiplier = brands.reduce((sum, brand) => sum + (brandMultipliers[brand] || 0), 0);
+  }
+
+  for (const [state, yearData] of Object.entries(siamSalesRaw)) {
+    result[state] = Math.round((yearData[fyYear] || 0) * multiplier);
+  }
+  return result;
+};
+
+// Get state sales history (all years)
+export const getStateSalesHistory = (state: string, brands: string[] = ['All']) => {
+  const yearData = siamSalesRaw[state] || {};
+  let multiplier = 1;
+  if (brands.length > 0 && !brands.includes('All')) {
+    multiplier = brands.reduce((sum, brand) => sum + (brandMultipliers[brand] || 0), 0);
+  }
+  return Object.entries(yearData)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fy, units]) => ({ fy, units: Math.round(units * multiplier) }));
+};
+
+// Get collection by state for a given FY
+export const getELVCollectionByState = (fyYear: string): Record<string, number> => {
+  const result: Record<string, number> = {};
+  for (const item of elvRvsfCollectionData) {
+    if (item.fyYear === fyYear) {
+      result[item.state] = (result[item.state] || 0) + item.vehiclesCollected;
+    }
+  }
+  return result;
+};
+
+// Get state collection history (all years)
+export const getStateCollectionHistory = (state: string) => {
+  const years = ['2021-22', '2022-23', '2023-24', '2024-25'];
+  return years.map(fy => ({
+    fy,
+    collected: elvRvsfCollectionData
+      .filter(d => d.fyYear === fy && d.state === state)
+      .reduce((s, d) => s + d.vehiclesCollected, 0),
+  }));
+};
+
+// Compute hotspot data for all states
+export const getELVHotspotStateData = (selectedFY: string, lagYears: number, brands: string[] = ['All']): StateHotspotData[] => {
+  const lagFY = getELVLagFY(selectedFY, lagYears);
+  const salesLagData = getELVSalesByState(lagFY, brands);
+  const salesCurrentData = getELVSalesByState(selectedFY, brands);
+  const collectionData = getELVCollectionByState(selectedFY);
+  const states = Object.keys(elvStateCoords);
+
+  const rawScores: Record<string, number> = {};
+  for (const state of states) {
+    const sales = salesLagData[state] || 0;
+    const collected = Math.max(collectionData[state] || 0, 1);
+    rawScores[state] = sales / collected;
+  }
+  const maxScore = Math.max(...Object.values(rawScores), 1);
+
+  return states.map(state => {
+    const [lat, lng] = elvStateCoords[state];
+    const salesLagYear = salesLagData[state] || 0;
+    const salesCurrentYear = salesCurrentData[state] || 0;
+    const vehiclesCollected = collectionData[state] || 0;
+    const normalizedScore = Math.round((rawScores[state] / maxScore) * 100);
+    const activeRVSFs = elvRvsfRegistry.filter(r => r.state === state && r.status === 'active');
+    const rvsfCount = activeRVSFs.length;
+    const totalCapacity = activeRVSFs.reduce((s, r) => s + r.capacityPerYear, 0);
+    const coverageStatus: 'green' | 'amber' | 'red' =
+      normalizedScore <= 33 ? 'green' : normalizedScore <= 66 ? 'amber' : 'red';
+
+    return { state, lat, lng, salesLagYear, salesCurrentYear, rvsfCount, vehiclesCollected, hotspotScore: normalizedScore, coverageStatus, totalCapacity };
+  });
+};
+
+// National KPIs
+export const getELVNationalKPIs = (selectedFY: string, lagYears: number, brands: string[] = ['All']) => {
+  const lagFY = getELVLagFY(selectedFY, lagYears);
+  const salesSelected = Object.values(getELVSalesByState(selectedFY, brands)).reduce((a, b) => a + b, 0);
+  const estimatedELV = Object.values(getELVSalesByState(lagFY, brands)).reduce((a, b) => a + b, 0);
+  const totalActiveRVSFs = elvRvsfRegistry.filter(r => r.status === 'active').length;
+  const totalCollected = elvRvsfCollectionData
+    .filter(d => d.fyYear === selectedFY)
+    .reduce((s, d) => s + d.vehiclesCollected, 0);
+  const gapPercent = estimatedELV > 0 ? Math.round(((estimatedELV - totalCollected) / estimatedELV) * 100) : 0;
+  const hotspotData = getELVHotspotStateData(selectedFY, lagYears, brands);
+  const topHotspots = [...hotspotData].sort((a, b) => b.hotspotScore - a.hotspotScore).slice(0, 3).map(d => d.state);
+
+  return { salesSelected, estimatedELV, totalActiveRVSFs, totalCollected, gapPercent, topHotspots, lagFY };
+};
+
+// Sales vs Collection trend
+export const getELVTrendData = (lagYears: number, brands: string[] = ['All']) => {
+  const years = ['2021-22', '2022-23', '2023-24', '2024-25'];
+  return years.map(fy => {
+    const lagFY = getELVLagFY(fy, lagYears);
+    const estimatedELV = Object.values(getELVSalesByState(lagFY, brands)).reduce((a, b) => a + b, 0);
+    const collected = elvRvsfCollectionData.filter(d => d.fyYear === fy).reduce((s, d) => s + d.vehiclesCollected, 0);
+    const sales = Object.values(getELVSalesByState(fy, brands)).reduce((a, b) => a + b, 0);
+    return { fy, sales, estimatedELV, collected, gap: estimatedELV - collected };
+  });
+};
+
+// State rankings for sortable table
+export const getELVStateRankings = (selectedFY: string, lagYears: number, brands: string[] = ['All']) => {
+  return getELVHotspotStateData(selectedFY, lagYears, brands)
+    .map(d => ({
+      ...d,
+      collectionGap: d.salesLagYear - d.vehiclesCollected,
+      gapPercent: d.salesLagYear > 0
+        ? Math.round(((d.salesLagYear - d.vehiclesCollected) / d.salesLagYear) * 100)
+        : 0,
+    }))
+    .sort((a, b) => b.hotspotScore - a.hotspotScore);
+};
+
+// ELV age profile - which make-year vehicles are being scrapped
+export const getELVAgeProfile = (fyYear: string) => {
+  const data = elvOriginData.filter(d => d.fyYearScrapped === fyYear);
+  const byMakeYear: Record<number, number> = {};
+  for (const d of data) {
+    byMakeYear[d.makeYear] = (byMakeYear[d.makeYear] || 0) + d.vehicleCount;
+  }
+  return Object.entries(byMakeYear)
+    .sort(([a], [b]) => parseInt(a) - parseInt(b))
+    .map(([year, count]) => ({ makeYear: String(year), vehicleCount: count }));
+};
+
+// Available FY options for ELV tab
+export const elvFYOptions = [
+  '2024-25', '2023-24', '2022-23', '2021-22',
+];
+
+export const elvBrandOptions = [
+  'All', 'Maruti Suzuki', 'Hyundai', 'Tata', 'Mahindra', 'Kia', 'Toyota', 'Honda', 'Others',
 ];
 

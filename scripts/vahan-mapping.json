@@ -1,0 +1,419 @@
+{
+  "_instructions": "Map Vahan portal RVSF codes (from the dropdown) to dashboard IDs. Fill 'vahanCode' from the portal dropdown option values. 'competitorId' = key in competitorData.ts rvsfMaster (null if not OEM-branded). 'elvId' = rvsfId in dashboardData.ts elvRvsfRegistry (null if not listed). Run the browser script, open the JSON, copy rvsfCode values here.",
+  "mappings": [
+    {
+      "vahanCode": "SW5600673387-S003_D023_A0001-1648719570004",
+      "name": "MSTI Noida",
+      "competitorId": "msti_noida",
+      "elvId": "RVSF-001"
+    },
+    {
+      "vahanCode": "SW9990902763-S028_D001_A0001-1676633470953",
+      "name": "Re.Wi.Re Jaipur",
+      "competitorId": "rewire_jaipur",
+      "elvId": null
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Re.Wi.Re Bhubaneswar",
+      "competitorId": "rewire_bhubaneswar",
+      "elvId": null
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Re.Wi.Re Surat",
+      "competitorId": "rewire_surat",
+      "elvId": null
+    },
+    {
+      "vahanCode": "SW9968235004-S002_D031_A0001-1675414597021",
+      "name": "Re.Wi.Re Chandigarh",
+      "competitorId": "rewire_chandigarh",
+      "elvId": "CH-001"
+    },
+    {
+      "vahanCode": "SW5478928105-S020_D004_A0003-1676624933094",
+      "name": "Re.Wi.Re Delhi",
+      "competitorId": "rewire_delhi",
+      "elvId": "DL-001"
+    },
+    {
+      "vahanCode": "SW1129160574-S007_D033_A0001-1712398409875",
+      "name": "Re.Wi.Re Pune",
+      "competitorId": "rewire_pune",
+      "elvId": "RVSF-004"
+    },
+    {
+      "vahanCode": "SW240445130-S012_D023_A0001-1723635487576",
+      "name": "Re.Wi.Re Guwahati",
+      "competitorId": "rewire_guwahati",
+      "elvId": "AS-005"
+    },
+    {
+      "vahanCode": "SW8216245849-S016_D001_A0001-1701350270356",
+      "name": "Re.Wi.Re Kolkata",
+      "competitorId": "rewire_kolkata",
+      "elvId": "RVSF-009"
+    },
+    {
+      "vahanCode": "SW8036987837-S003_D023_A0001-1708173295638",
+      "name": "Re.Wi.Re Lucknow",
+      "competitorId": "rewire_lucknow",
+      "elvId": "RVSF-020"
+    },
+    {
+      "vahanCode": "SW2940485085-S019_D049_A0003-1721301874369",
+      "name": "Re.Wi.Re Raipur",
+      "competitorId": "rewire_raipur",
+      "elvId": "CG-001"
+    },
+    {
+      "vahanCode": "SW5181650838-S003_D023_A0001-1646236312098",
+      "name": "CERO Greater Noida",
+      "competitorId": "cero_greater_noida",
+      "elvId": "UP-N043"
+    },
+    {
+      "vahanCode": "RVSF9",
+      "name": "CERO Chennai",
+      "competitorId": "cero_chennai",
+      "elvId": "RVSF-007"
+    },
+    {
+      "vahanCode": "SW5181650838-S007_D033_A0001-1750400152305",
+      "name": "CERO Pune",
+      "competitorId": "cero_pune",
+      "elvId": "RVSF-004"
+    },
+    {
+      "vahanCode": "SW5181650838-S014_D040_A0001-1677306283440",
+      "name": "CERO Bengaluru",
+      "competitorId": "cero_bengaluru",
+      "elvId": "RVSF-003"
+    },
+    {
+      "vahanCode": "SW6828442031-S004_D020_A010-1648115331283",
+      "name": "CERO Ahmedabad",
+      "competitorId": "cero_ahmedabad",
+      "elvId": "RVSF-002"
+    },
+    {
+      "vahanCode": "SW7427633817-S011_D034_A0001-1649848941465",
+      "name": "CERO Indore",
+      "competitorId": "cero_indore",
+      "elvId": "RVSF-015"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "CERO Hyderabad",
+      "competitorId": "cero_hyderabad",
+      "elvId": "RVSF-008"
+    },
+    {
+      "vahanCode": "SW5181650838-S012_D023_A0001-1676897814105",
+      "name": "CERO Guwahati",
+      "competitorId": "cero_guwahati",
+      "elvId": "AS-005"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "CERO Chandigarh",
+      "competitorId": "cero_chandigarh",
+      "elvId": "CH-001"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "CERO Kolkata",
+      "competitorId": "cero_kolkata",
+      "elvId": "RVSF-009"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "CERO Mumbai",
+      "competitorId": "cero_mumbai",
+      "elvId": "RVSF-013"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "CERO Jaipur",
+      "competitorId": "cero_jaipur",
+      "elvId": "RVSF-010"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "CERO Nagpur",
+      "competitorId": "cero_nagpur",
+      "elvId": "RVSF-014"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "CERO Bhopal",
+      "competitorId": "cero_bhopal",
+      "elvId": "MP-001"
+    },
+    {
+      "vahanCode": "RVSF2",
+      "name": "Antikythera Dynamics",
+      "competitorId": null,
+      "elvId": "AP-001"
+    },
+    {
+      "vahanCode": "SW24013025877-S005_D028_A0001-1742293737111",
+      "name": "CYRYBRAL SOFT TECH",
+      "competitorId": null,
+      "elvId": "AP-002"
+    },
+    {
+      "vahanCode": "SW6318509223-S005_D028_A0001-1664615457837",
+      "name": "Duggis Vehicle Scrapping",
+      "competitorId": null,
+      "elvId": "AP-003"
+    },
+    {
+      "vahanCode": "SW9231751023-S005_D028_A0001-1657701316493",
+      "name": "Hindustan Recycling Hub (AP)",
+      "competitorId": null,
+      "elvId": "AP-004"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "ARUN SAHU",
+      "competitorId": null,
+      "elvId": "AS-001"
+    },
+    {
+      "vahanCode": "SW240445130-S012_D023_A0001-1723635487576",
+      "name": "AXOM PLATINUM SCRAPPERS",
+      "competitorId": null,
+      "elvId": "AS-002"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "KD ECOSYSTEM",
+      "competitorId": null,
+      "elvId": "AS-004"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "B.K Construction & Co",
+      "competitorId": null,
+      "elvId": "BR-001"
+    },
+    {
+      "vahanCode": "SW7741231463-S017_D017_A0001-1683616056285",
+      "name": "KNOVEL VENTURES",
+      "competitorId": null,
+      "elvId": "BR-003"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Select Technical Services",
+      "competitorId": null,
+      "elvId": "CH-001"
+    },
+    {
+      "vahanCode": "SW0112184628-S019_D049_A0003-1739352108219",
+      "name": "AGRAWAL STRUCTURE MILLS",
+      "competitorId": null,
+      "elvId": "CG-001"
+    },
+    {
+      "vahanCode": "SW2404293454-S019_D049_A0003-1743590578513",
+      "name": "BHILAI TECHNO",
+      "competitorId": null,
+      "elvId": "CG-002"
+    },
+    {
+      "vahanCode": "SW0112450393-S019_D049_A0003-1733845578509",
+      "name": "CHHATTISGARH ECO RECYCLERS",
+      "competitorId": null,
+      "elvId": "CG-003"
+    },
+    {
+      "vahanCode": "RVSF7",
+      "name": "A TO Z VEHICLE SCRAP",
+      "competitorId": null,
+      "elvId": "DL-001"
+    },
+    {
+      "vahanCode": "RVSF8",
+      "name": "BHARAT MOTORS (DL)",
+      "competitorId": null,
+      "elvId": "DL-002"
+    },
+    {
+      "vahanCode": "RVSF6",
+      "name": "EZWASTE RECYCLING",
+      "competitorId": null,
+      "elvId": "DL-003"
+    },
+    {
+      "vahanCode": "SW3503159791-S006_D036_A0001-1706509040373",
+      "name": "Mangal Iron",
+      "competitorId": null,
+      "elvId": "GA-001"
+    },
+    {
+      "vahanCode": "SW5223985727-S004_D020_A010-1636372419515",
+      "name": "CMR Kataria Recycling",
+      "competitorId": null,
+      "elvId": "GJ-002"
+    },
+    {
+      "vahanCode": "SW0257072798-S004_D020_A010-1758710464836",
+      "name": "TT Recycling Management",
+      "competitorId": "tt_recycling_ahmedabad",
+      "elvId": "GJ-010"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Mahindra MSTC (GJ)",
+      "competitorId": null,
+      "elvId": "GJ-005"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Bagga Link Service",
+      "competitorId": null,
+      "elvId": "HR-001"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Rosmerta Auto Recycling",
+      "competitorId": null,
+      "elvId": "HR-017"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "SCRAP VEHICLE ELV INDIA",
+      "competitorId": null,
+      "elvId": "HR-019"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "PINEVIEW RECYCLERS (JH)",
+      "competitorId": null,
+      "elvId": "JH-001"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Mahindra MSTC (KA)",
+      "competitorId": null,
+      "elvId": "KA-001"
+    },
+    {
+      "vahanCode": "RVSF13",
+      "name": "TVS MOTOR COMPANY RVSF",
+      "competitorId": null,
+      "elvId": "KA-003"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "SILK RVSF NORTH ZONE",
+      "competitorId": null,
+      "elvId": "KL-001"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "SILK RVSF SOUTH ZONE",
+      "competitorId": null,
+      "elvId": "KL-002"
+    },
+    {
+      "vahanCode": "RVSF12",
+      "name": "SIMCO RVSF & KSRTC",
+      "competitorId": null,
+      "elvId": "KL-003"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Mahindra MSTC (MP)",
+      "competitorId": null,
+      "elvId": "MP-004"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Alchemy Recycling",
+      "competitorId": null,
+      "elvId": "MH-001"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Mahindra MSTC (MH)",
+      "competitorId": null,
+      "elvId": "MH-008"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "TATA INTERNATIONAL VEHICLE APPLICATIONS",
+      "competitorId": null,
+      "elvId": "MH-010"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Empreo Premium",
+      "competitorId": null,
+      "elvId": "OR-001"
+    },
+    {
+      "vahanCode": "SW9997791747-S002_D031_A0001-1670849231401",
+      "name": "Bless Green Steel",
+      "competitorId": null,
+      "elvId": "PB-001"
+    },
+    {
+      "vahanCode": "SW9116059753-S002_D031_A0001-1747736376218",
+      "name": "Junkmunchers (JMELV)",
+      "competitorId": null,
+      "elvId": "PB-005"
+    },
+    {
+      "vahanCode": "RVSF9",
+      "name": "MAHINDRA MSTC (TN)",
+      "competitorId": null,
+      "elvId": "TN-001"
+    },
+    {
+      "vahanCode": "RVSF5",
+      "name": "Sri Harsha Equipments India",
+      "competitorId": null,
+      "elvId": "TS-003"
+    },
+    {
+      "vahanCode": "SW4199848982-S010_D035_A0001-1722591189505",
+      "name": "HONEST RECYCLING",
+      "competitorId": null,
+      "elvId": "UK-003"
+    },
+    {
+      "vahanCode": "SW5600673387-S003_D023_A0001-1648719570004",
+      "name": "MARUTI SUZUKI TOYOTSU (MSTI)",
+      "competitorId": "msti_noida",
+      "elvId": "UP-N046"
+    },
+    {
+      "vahanCode": "SW5181650838-S003_D023_A0001-1646236312098",
+      "name": "Mahindra MSTC (UP)",
+      "competitorId": null,
+      "elvId": "UP-N043"
+    },
+    {
+      "vahanCode": "SW9999992962-S003_D023_A0001-1681388069945",
+      "name": "Scrapvenger ELV India",
+      "competitorId": null,
+      "elvId": "UP-N072"
+    },
+    {
+      "vahanCode": "FILL_ME",
+      "name": "Bengal Recycling Hub",
+      "competitorId": null,
+      "elvId": "WB-001"
+    },
+    {
+      "vahanCode": "SW8216245849-S016_D001_A0001-1701350270356",
+      "name": "Selladale Synergies India",
+      "competitorId": null,
+      "elvId": "WB-004"
+    }
+  ]
+}

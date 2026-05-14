@@ -95,6 +95,7 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, on
                 options={filterOptions.targetMarkets.map(t => ({ value: t, label: t }))}
               />
             </div>
+
           </div>
 
           {/* Filter Bar - Row 2: Material Selection */}

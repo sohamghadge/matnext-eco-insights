@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# PDF ingestion — do not commit actual PDFs
+data/pdfs/inbox/*.pdf
+data/pdfs/processed/*.pdf
+logs/

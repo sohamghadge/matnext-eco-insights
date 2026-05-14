@@ -1,10 +1,13 @@
 import { useState, useCallback } from 'react';
 import { Tabs, ConfigProvider, notification } from 'antd';
-import { Building2, Recycle, Factory, Truck } from 'lucide-react';
+import { Building2, Recycle, Factory, Truck, Flame, BarChart2, GitBranch } from 'lucide-react';
 import MSILTab from './tabs/MSILTab';
 import RVSFTab from './tabs/RVSFTab';
 import RecyclersTab from './tabs/RecyclersTab';
 import SuppliersTab from './tabs/SuppliersTab';
+import ELVHotspotTab from './tabs/ELVHotspotTab';
+import OEMCompetitorTab from './tabs/OEMCompetitorTab';
+import PartsTraceTab from './tabs/parts-trace/PartsTraceTab';
 import DashboardHeader from './DashboardHeader';
 import DataValidationBanner from './DataValidationBanner';
 import { FilterState, defaultFilters } from '@/data/dashboardData';
@@ -79,6 +82,36 @@ const Dashboard = () => {
         </span>
       ),
       children: <SuppliersTab isLoading={isLoading} filters={filters} />,
+    },
+    {
+      key: 'elv-hotspot',
+      label: (
+        <span className="flex items-center gap-2">
+          <Flame className="w-4 h-4" />
+          ELV Hotspot Analysis
+        </span>
+      ),
+      children: <ELVHotspotTab isLoading={isLoading} />,
+    },
+    {
+      key: 'oem-competitor',
+      label: (
+        <span className="flex items-center gap-2">
+          <BarChart2 className="w-4 h-4" />
+          OEM Competitor Analysis
+        </span>
+      ),
+      children: <OEMCompetitorTab isLoading={isLoading} />,
+    },
+    {
+      key: 'parts-trace',
+      label: (
+        <span className="flex items-center gap-2">
+          <GitBranch className="w-4 h-4" />
+          Parts Trace
+        </span>
+      ),
+      children: <PartsTraceTab />,
     },
   ];
 

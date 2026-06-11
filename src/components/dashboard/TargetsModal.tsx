@@ -12,6 +12,7 @@ import {
   type TagItem,
 } from '@/services/dashboardApi';
 import { useAuthStore } from '@/stores/authStore';
+import { en } from '@/utils/languageTranslation';
 
 // Financial Year options
 const fyOptions = [
@@ -254,7 +255,7 @@ export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType
   };
 
   const materialColumns: ColumnsType<MaterialFiscalYearTarget & { key: React.Key }> = [
-    { title: 'Material', dataIndex: 'materialTypeKey', key: 'material', render: (text: string) => <Tag color="green">{text}</Tag> },
+    { title: 'Material', dataIndex: 'materialTypeKey', key: 'material', render: (text: string) => <Tag color="green">{en?.[text]}</Tag> },
     { title: 'Financial Year', dataIndex: 'fiscalYear', key: 'fy' },
     { title: 'Target', dataIndex: 'target', key: 'target', render: (value: number) => value?.toLocaleString() },
     { title: 'Unit', dataIndex: 'unit', key: 'unit' },

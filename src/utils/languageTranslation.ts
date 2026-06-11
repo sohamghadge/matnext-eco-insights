@@ -1,0 +1,23 @@
+export const en = {
+    "job_Aluminium": "Aluminium",
+    "job_Battery": "Battery",
+    "job_BlackMass": "Black Mass",
+    "inv_CastIron": "Cast Iron",
+    "job_Copper": "Copper",
+    "job_EWaste": "E-Waste",
+    "inv_Foam": "Foam",
+    "inv_Freon": "Freon",
+    "job_Glass": "Glass",
+    "inv_Lead": "Lead",
+    "job_LeadAcidBattery": "Lead Acid Battery",
+    "inv_Mix": "Mix",
+    "job_Paper": "Paper",
+    "job_Plastic": "Plastic",
+    "inv_PlatinumAndPalladium": "Platinum/Palladium",
+    "job_Rubber": "Rubber",
+    "job_Steel": "Steel",
+    "job_Textile": "Textile",
+    "job_UsedOil": "Used Oil",
+    "job_Waste": "Waste",
+    "job_Zinc": "Zinc"
+}

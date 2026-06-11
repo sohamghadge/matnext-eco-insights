@@ -25,6 +25,7 @@ import { useRegulatoryData } from '@/data/regulatoryData';
 import ComplianceSubTab from '../Compliance/ComplianceSubTab';
 import { MaterialTileResp } from '@/services/dashboardApi';
 import type { TargetEntry } from '../TargetsModal';
+import { en } from '@/utils/languageTranslation';
 
 type ModelRecycledContentRow = ModelRecycledContent & { key?: string | number };
 type PartRecycledContentRow = PartRecycledContent & { key?: string | number };
@@ -451,7 +452,7 @@ const MSILTab = ({ isLoading, filters, materialTiles }: MSILTabProps) => {
               return (
                 <KPICard
                   key={item.materialTypeId}
-                  title={item.materialTypeKey}
+                  title={en?.[item.materialTypeKey]}
                   value={item.quantity}
                   unit="MT"
                   target={item.targetQuantity}

@@ -11,7 +11,7 @@ export interface FilterState {
   plant: string;
   targetMarket: string;
   sourcedFromELV: string;
-  materials: string[];
+  materials: (number | string | undefined)[];
 }
 
 export const defaultFilters: FilterState = {
@@ -20,7 +20,7 @@ export const defaultFilters: FilterState = {
   plant: 'All',
   targetMarket: 'Domestic',
   sourcedFromELV: 'Yes',
-  materials: ['Steel', 'Aluminium', 'Copper', 'Plastic'],
+  materials: [],
 };
 
 export const filterOptions = {
@@ -1150,7 +1150,7 @@ export const getSupplierSummary = (
   const prorationFactor = getProrationFactor(filters);
 
   // Start with default summary
-  let baseSummary = { ...supplierSummary };
+  const baseSummary = { ...supplierSummary };
 
   // Adjust base summary using data density logic
   // Calculate filter restrictive-ness
@@ -2285,4 +2285,3 @@ export const elvFYOptions = [
 export const elvBrandOptions = [
   'All', 'Maruti Suzuki', 'Hyundai', 'Tata', 'Mahindra', 'Kia', 'Toyota', 'Honda', 'Others',
 ];
-

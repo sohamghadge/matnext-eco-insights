@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Tabs, ConfigProvider, notification } from 'antd';
 import { Building2, Recycle, Factory, Truck, Flame, BarChart2, GitBranch } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import MSILTab from './tabs/MSILTab';
 import RVSFTab from './tabs/RVSFTab';
 import RecyclersTab from './tabs/RecyclersTab';
@@ -12,27 +13,97 @@ import DashboardHeader from './DashboardHeader';
 import DataValidationBanner from './DataValidationBanner';
 import { FilterState, defaultFilters } from '@/data/dashboardData';
 import { Leaf } from 'lucide-react';
+import { getMaterialTileData, getMaterialType, MaterialFiscalYearTargetPayload, MaterialTileResp, setMaterialTargetApi, type TagsResponse } from '@/services/dashboardApi';
+import { apiResponse } from '@/services/response.interface';
+import { formatDateToDDMMYYYY } from '@/utils/dayjs';
+import { useAuthStore } from '@/stores/authStore';
+import type { TargetEntry } from './TargetsModal';
 
 const Dashboard = () => {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [activeTab, setActiveTab] = useState('msil');
   const [isLoading, setIsLoading] = useState(false);
-  const [customTargets, setCustomTargets] = useState<{ material: string; fy: string; unit: string; target: number }[]>([]);
+  const [customTargets, setCustomTargets] = useState<TargetEntry[]>([]);
+  const [materialOptions, setMaterialOptions] = useState<TagsResponse>({})
+  const [materialTiles, setMaterialTiles] = useState<MaterialTileResp>({});
+  const token = useAuthStore((state) => state.token);
+  const userData = useAuthStore((state) => state.userData);
 
-  const handleSaveTarget = useCallback((target: { material: string; fy: string; unit: string; target: number }) => {
-    setCustomTargets(prev => [...prev, target]);
-    notification.success({
-      message: 'Target Set Successfully',
-      description: `Target for ${target.material} has been updated for ${target.fy}.`,
-      placement: 'topRight',
-      className: '!bg-emerald-50 !border-emerald-200',
-      style: { border: '1px solid #a7f3d0', borderRadius: '12px' },
-      icon: <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center -ml-2"><Leaf className="w-4 h-4 text-emerald-600" /></div>,
-      duration: 4,
+  const materialTypeQuery = useQuery({
+    queryKey: ['materialTypeTags'],
+    queryFn: async () => {
+      const response = await getMaterialType({ params: { type: "MATERIAL_TYPE" } });
+      if (response?.data) {
+        setMaterialOptions(response?.data)
+        const defaultMaterials = ["Aluminium", "Copper", "Plastic", "Steel"]
+        const filteredMaterials = response.data?.list?.filter(v => defaultMaterials.includes(v?.name ?? ''))
+        setFilters({ ...filters, materials: filteredMaterials.map(v => v?.id) || [] })
+      }
+      return response?.data;
+    },
+    enabled: Boolean(token),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!token || !filters.materials.length) {
+      setMaterialTiles({ list: [] });
+      return;
+    }
+    getMaterialTileData({
+      params: {
+        materialTypeIds: filters.materials.join(","),
+        userId: userData?.id,
+        fromDate: formatDateToDDMMYYYY(filters.dateFrom),
+        toDate: formatDateToDDMMYYYY(filters.dateTo),
+        elvSourced: filters.sourcedFromELV === 'Yes',
+      },
+    }).then((response: { data: MaterialTileResp, error: null | undefined }) => {
+      setMaterialTiles(response.data ? response.data : { list: [] });
+    }).catch(() => {
+      setMaterialTiles({ list: [] });
     });
-  }, []);
+  }, [filters, token, userData]);
 
-  const handleFilterChange = useCallback((key: keyof FilterState, value: string | string[] | Date) => {
+
+  const handleSaveTarget = useCallback(async (targetValue: MaterialFiscalYearTargetPayload) => {
+    const { materialTypeId, fiscalYear, unit, target } = targetValue
+    const payload: MaterialFiscalYearTargetPayload = {
+      userId: userData?.id,
+      materialTypeId,
+      fiscalYear,
+      unit,
+      target
+    }
+    await setMaterialTargetApi(payload)
+      .then((response: apiResponse) => {
+        if (response.data) {
+          notification.success({
+            message: 'Target Set Successfully',
+            description: `Target for ${materialTypeId} has been updated for ${fiscalYear}.`,
+            placement: 'topRight',
+            className: '!bg-emerald-50 !border-emerald-200',
+            style: { border: '1px solid #a7f3d0', borderRadius: '12px' },
+            icon: <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center -ml-2"><Leaf className="w-4 h-4 text-emerald-600" /></div>,
+            duration: 4,
+          });
+        } else {
+          notification.error({
+            message: 'Target not added',
+            placement: 'topRight',
+            duration: 4,
+          });
+        }
+      }).catch(() => {
+        notification.error({
+          message: 'Target not added',
+          placement: 'topRight',
+          duration: 4,
+        });
+      });
+  }, [userData?.id]);
+
+  const handleFilterChange = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setIsLoading(true);
     setFilters(prev => ({ ...prev, [key]: value }));
 
@@ -51,7 +122,7 @@ const Dashboard = () => {
           Corporate (MSIL)
         </span>
       ),
-      children: <MSILTab isLoading={isLoading} filters={filters} customTargets={customTargets} />,
+      children: <MSILTab isLoading={isLoading} filters={filters} customTargets={customTargets} materialTiles={materialTiles} />,
     },
     {
       key: 'rvsf',
@@ -151,7 +222,16 @@ const Dashboard = () => {
     <ConfigProvider theme={antdTheme}>
       <div className="bg-background">
         {/* Dashboard Header with filters and targets */}
-        <DashboardHeader filters={filters} onFilterChange={handleFilterChange} activeTab={activeTab} customTargets={customTargets} onSaveTarget={handleSaveTarget} />
+        <DashboardHeader
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          activeTab={activeTab}
+          customTargets={customTargets}
+          onSaveTarget={handleSaveTarget}
+          materialOptions={materialOptions?.list || []}
+          materialOptionsLoading={materialTypeQuery.isLoading}
+          materialTiles={materialTiles}
+        />
 
         <div className="px-6 py-6">
           {/* Data Validation Banner */}

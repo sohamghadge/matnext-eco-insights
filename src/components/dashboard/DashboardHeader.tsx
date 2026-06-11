@@ -1,25 +1,82 @@
 import { useState } from 'react';
-import { Select, DatePicker, Tag, Button } from 'antd';
-import { Settings, Eye, Download } from 'lucide-react';
+import { Select, DatePicker, Tag, Button, notification } from 'antd';
+import { Settings, Eye, Download, History } from 'lucide-react';
 import { FilterState, filterOptions } from '@/data/dashboardData';
-import { SetTargetsModal, ViewTargetsModal } from './TargetsModal';
+import { SetTargetsModal, ViewTargetsModal, type TargetEntry } from './TargetsModal';
+import PreviousRequestModal from './PreviousRequestModal';
 import dayjs, { Dayjs } from 'dayjs';
+import {
+  type MaterialFiscalYearTargetPayload,
+  triggerDashboardSheetApi,
+  type MaterialTileResp,
+  type TagItem,
+} from '@/services/dashboardApi';
+import { formatDateToDDMMYYYY } from '@/utils/dayjs';
 
 interface DashboardHeaderProps {
   filters: FilterState;
-  onFilterChange: (key: keyof FilterState, value: string | string[] | Date) => void;
+  onFilterChange: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
   activeTab?: string;
-  customTargets: { material: string; fy: string; unit: string; target: number }[];
-  onSaveTarget: (target: { material: string; fy: string; unit: string; target: number }) => void;
+  customTargets: TargetEntry[];
+  onSaveTarget: (target: MaterialFiscalYearTargetPayload) => void;
+  materialOptions?: TagItem[];
+  materialOptionsLoading?: boolean;
+  materialTiles?: MaterialTileResp;
 }
 
-const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, onSaveTarget }: DashboardHeaderProps) => {
+const DashboardHeader = ({
+  filters,
+  onFilterChange,
+  activeTab,
+  customTargets,
+  onSaveTarget,
+  materialOptions = [],
+  materialOptionsLoading = false,
+  materialTiles
+}: DashboardHeaderProps) => {
   const [setTargetsOpen, setSetTargetsOpen] = useState(false);
   const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
+  const [previousRequestsOpen, setPreviousRequestsOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const handleDateChange = (key: 'dateFrom' | 'dateTo', date: Dayjs | null) => {
     if (date) {
       onFilterChange(key, date.toDate());
+    }
+  };
+
+  const handleExportFn = async () => {
+    setExportLoading(true);
+
+    try {
+      const response = await triggerDashboardSheetApi({
+        sheetType: 'DASHBOARD_MATERIAL_TYPES_TILE_SHEET',
+        materialTypeIds: filters.materials,
+        fromDate: formatDateToDDMMYYYY(filters.dateFrom),
+        toDate: formatDateToDDMMYYYY(filters.dateTo),
+        elvSourced: filters.sourcedFromELV === 'Yes',
+        materialData: materialTiles?.list || [],
+      });
+
+      if (response.data) {
+        notification.success({
+          message: 'Your report is being generated. Please check the status and download the report by clicking the ‘View Previous History’ button after some time',
+          placement: 'topRight',
+        });
+        return;
+      }
+
+      notification.error({
+        message: 'Report export failed',
+        placement: 'topRight',
+      });
+    } catch {
+      notification.error({
+        message: 'Report export failed',
+        placement: 'topRight',
+      });
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -100,7 +157,7 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, on
 
           {/* Filter Bar - Row 2: Material Selection */}
           <div className="flex flex-wrap items-end gap-4 mt-4">
-            <div className="flex flex-col gap-1.5 flex-grow">
+            <div className="flex min-w-[260px] flex-1 flex-col gap-1.5">
               <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">
                 Select Material
               </label>
@@ -108,11 +165,12 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, on
                 mode="multiple"
                 value={filters.materials}
                 onChange={(value) => onFilterChange('materials', value)}
-                style={{ minWidth: 400, maxWidth: '100%' }}
+                className="w-full"
                 maxTagCount={3}
                 maxTagTextLength={12}
                 placeholder="Select materials..."
-                options={filterOptions.allMaterials.map(m => ({ value: m, label: m }))}
+                loading={materialOptionsLoading}
+                options={materialOptions.map(m => ({ value: m?.id, label: m?.name }))}
                 tagRender={(props) => (
                   <Tag
                     closable={props.closable}
@@ -126,7 +184,7 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, on
             </div>
 
             {activeTab === 'msil' && (
-              <>
+              <div className="ml-auto flex flex-wrap items-end gap-4">
                 <Button
                   type="primary"
                   icon={<Settings className="w-4 h-4" />}
@@ -146,19 +204,19 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, on
                 <Button
                   type="default"
                   icon={<Download className="w-4 h-4" />}
-                  onClick={() => {
-                    import('@/utils/exportUtils').then(mod => {
-                      mod.exportToCSV(
-                        [{ 'Export': 'Dashboard data exported with current filters applied', 'Date': new Date().toISOString(), 'Plant': filters.plant, 'Market': filters.targetMarket }],
-                        'Dashboard_Export',
-                        filters
-                      );
-                    });
-                  }}
+                  loading={exportLoading}
+                  onClick={handleExportFn}
                 >
                   Export
                 </Button>
-              </>
+                <Button
+                  type="default"
+                  icon={<History className="w-4 h-4" />}
+                  onClick={() => setPreviousRequestsOpen(true)}
+                >
+                  View Previous History
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -169,11 +227,17 @@ const DashboardHeader = ({ filters, onFilterChange, activeTab, customTargets, on
         open={setTargetsOpen}
         onClose={() => setSetTargetsOpen(false)}
         onSave={onSaveTarget}
+        materialOptions={materialOptions || []}
       />
       <ViewTargetsModal
         open={viewTargetsOpen}
         onClose={() => setViewTargetsOpen(false)}
         customTargets={customTargets}
+        materialOptions={materialOptions}
+      />
+      <PreviousRequestModal
+        open={previousRequestsOpen}
+        onClose={() => setPreviousRequestsOpen(false)}
       />
     </>
   );

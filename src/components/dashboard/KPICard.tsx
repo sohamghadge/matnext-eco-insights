@@ -92,7 +92,7 @@ const KPICard = ({
       {/* Content */}
       <div className="flex items-end justify-between">
         <div className="flex-1">
-          {showProgress && target ? (
+          {showProgress /* && target */ ? (
             <div className="flex items-center gap-4">
               <Progress
                 type="dashboard"

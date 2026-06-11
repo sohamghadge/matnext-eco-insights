@@ -2,34 +2,41 @@ import { useState, useMemo } from 'react';
 import { Table, Tag, Skeleton, Divider, Button, Space, Progress, Tooltip, Segmented, notification, Modal } from 'antd';
 import { CheckCircle, Download, FileSpreadsheet, Star, Leaf, Eye, Info, ChevronRight, LayoutDashboard, ShieldCheck, AlertTriangle, Mail } from 'lucide-react';
 import { ComposedChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Area } from 'recharts';
-import KPICard, { getProgressColor } from '../KPICard';
+import KPICard from '../KPICard';
 import AIInsightsWidget from '../AIInsightsWidget';
 import ExpandableWidget from '../ExpandableWidget';
 import EcoScoreBadge from '../EcoScoreBadge';
 import EcoScoreModal from '../EcoScoreModal';
 import {
-  getMaterialTargets,
   getModelRecycledContent,
   getPartRecycledContent,
   getMSILComponentDispatchData,
-  getMSILTestVehiclesData,
   FilterState,
   getFinancialYear,
+  ModelRecycledContent,
   msilAIInsights,
+  PartRecycledContent,
   getMaterialTrendData,
-  msilCorporateEcoScore
+  msilCorporateEcoScore,
+  getMaterialTargets,
 } from '@/data/dashboardData';
 import { exportToCSV, exportToExcel, prepareMaterialDataForExport, prepareModelDataForExport, preparePartDataForExport } from '@/utils/exportUtils';
 import { useRegulatoryData } from '@/data/regulatoryData';
 import ComplianceSubTab from '../Compliance/ComplianceSubTab';
+import { MaterialTileResp } from '@/services/dashboardApi';
+import type { TargetEntry } from '../TargetsModal';
+
+type ModelRecycledContentRow = ModelRecycledContent & { key?: string | number };
+type PartRecycledContentRow = PartRecycledContent & { key?: string | number };
 
 interface MSILTabProps {
   isLoading: boolean;
   filters: FilterState;
-  customTargets?: { material: string; fy: string; unit: string; target: number }[];
+  customTargets?: TargetEntry[];
+  materialTiles: MaterialTileResp,
 }
 
-const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
+const MSILTab = ({ isLoading, filters, materialTiles }: MSILTabProps) => {
   const financialYear = getFinancialYear(filters.dateFrom);
   const [ecoScoreModalOpen, setEcoScoreModalOpen] = useState(false);
   const { data: regulatoryData, isLoading: isRegulatoryLoading } = useRegulatoryData();
@@ -49,18 +56,8 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
 
   // Apply custom targets override for KPI cards
   const kpiMaterialsWithCustomTargets = useMemo(() => {
-    const kpiSlice = filteredMaterials.slice(0, 4);
-    if (customTargets.length === 0) return kpiSlice;
-    return kpiSlice.map(m => {
-      const custom = customTargets.find(
-        t => t.material === m.material && t.fy === financialYear
-      );
-      if (custom) {
-        return { ...m, target: custom.target, percentage: custom.target > 0 ? Math.min(100, (m.achieved / custom.target) * 100) : 0 };
-      }
-      return m;
-    });
-  }, [filteredMaterials, customTargets, financialYear]);
+    return materialTiles.list?.slice(0, 4) ?? []
+  }, [materialTiles]);
 
   // Determine materials not meeting target for severity reporting
   const materialsNotMeetingTarget = useMemo(() => {
@@ -203,7 +200,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
     {
       title: 'Overall Material Target (%)',
       key: 'overallTarget',
-      render: (_: unknown, record: any) => {
+      render: (_: unknown, record: ModelRecycledContentRow) => {
         const totalTarget = record.steelTarget + record.aluminumTarget + record.copperTarget + record.plasticTarget;
         const totalAchieved = record.steelAchieved + record.aluminumAchieved + record.copperAchieved + record.plasticAchieved;
         const overallPct = totalTarget > 0 ? ((totalAchieved / totalTarget) * 100) : 0;
@@ -228,7 +225,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
     {
       title: 'Steel (Target / Achieved)',
       key: 'steel',
-      render: (_: unknown, record: any) => (
+      render: (_: unknown, record: ModelRecycledContentRow) => (
         <div className="flex items-center gap-2">
           <span className="text-gray-500">{record.steelTarget}%</span>
           <span className="text-gray-400">/</span>
@@ -241,7 +238,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
     {
       title: 'Aluminium (Target / Achieved)',
       key: 'aluminum',
-      render: (_: unknown, record: any) => (
+      render: (_: unknown, record: ModelRecycledContentRow) => (
         <div className="flex items-center gap-2">
           <span className="text-gray-500">{record.aluminumTarget}%</span>
           <span className="text-gray-400">/</span>
@@ -254,7 +251,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
     {
       title: 'Copper (Target / Achieved)',
       key: 'copper',
-      render: (_: unknown, record: any) => (
+      render: (_: unknown, record: ModelRecycledContentRow) => (
         <div className="flex items-center gap-2">
           <span className="text-gray-500">{record.copperTarget}%</span>
           <span className="text-gray-400">/</span>
@@ -267,7 +264,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
     {
       title: 'Plastic (Target / Achieved)',
       key: 'plastic',
-      render: (_: unknown, record: any) => (
+      render: (_: unknown, record: ModelRecycledContentRow) => (
         <div className="flex items-center gap-2">
           <span className="text-gray-500">{record.plasticTarget}%</span>
           <span className="text-gray-400">/</span>
@@ -301,7 +298,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
       dataIndex: 'ecoScore',
       key: 'ecoScore',
       render: (score: number) => <EcoScoreBadge score={score} size="small" />,
-      sorter: (a: any, b: any) => a.ecoScore - b.ecoScore,
+      sorter: (a: ModelRecycledContentRow, b: ModelRecycledContentRow) => a.ecoScore - b.ecoScore,
     },
     {
       title: 'Plant',
@@ -326,14 +323,14 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
     {
       title: 'Target (%)',
       key: 'targetPercent',
-      render: (_: unknown, record: any) => (
+      render: (_: unknown, record: PartRecycledContentRow) => (
         <span className="font-medium text-gray-700">{(record.targetPercent * 100).toFixed(0)}%</span>
       ),
     },
     {
       title: 'Achieved (%)',
       key: 'recycledContentPercent',
-      render: (_: unknown, record: any) => {
+      render: (_: unknown, record: PartRecycledContentRow) => {
         const met = record.recycledContentPercent >= record.targetPercent;
         return (
           <span className={`font-semibold ${met ? 'text-emerald-600' : 'text-amber-600'}`}>
@@ -345,7 +342,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
     {
       title: 'Target Met',
       key: 'targetMet',
-      render: (_: unknown, record: any) => {
+      render: (_: unknown, record: PartRecycledContentRow) => {
         const met = record.recycledContentPercent >= record.targetPercent;
         const pctOfTarget = record.targetPercent > 0 ? ((record.recycledContentPercent / record.targetPercent) * 100) : 0;
         return (
@@ -381,7 +378,7 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
       dataIndex: 'ecoScore',
       key: 'ecoScore',
       render: (score: number) => <EcoScoreBadge score={score} size="small" />,
-      sorter: (a: any, b: any) => a.ecoScore - b.ecoScore,
+      sorter: (a: PartRecycledContentRow, b: PartRecycledContentRow) => a.ecoScore - b.ecoScore,
     },
     {
       title: 'Plant',
@@ -446,26 +443,26 @@ const MSILTab = ({ isLoading, filters, customTargets = [] }: MSILTabProps) => {
           </button>
         </div>
       </div>
-
       {activeView === 'Overview' ? (
         <>
           {/* Top Value Chain Stats - Now visible immediately */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {kpiMaterials.map((item, index) => (
-              <KPICard
-                key={item.material}
-                title={item.material}
-                value={item.achieved}
-                unit="MT"
-                target={item.target}
-                targetLabel="Company Target"
-                variant={variants[index % variants.length]}
-                trend={{ value: 2.5, isPositive: true }}
-                showProgress={true}
-              />
-            ))}
+            {kpiMaterials.map((item, index) => {
+              return (
+                <KPICard
+                  key={item.materialTypeId}
+                  title={item.materialTypeKey}
+                  value={item.quantity}
+                  unit="MT"
+                  target={item.targetQuantity}
+                  targetLabel="Company Target"
+                  variant={variants[index % variants.length]}
+                  trend={{ value: 2.5, isPositive: true }}
+                  showProgress={true}
+                />
+              )
+            })}
           </div>
-
           {/* Report Target Not Met Button */}
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3">

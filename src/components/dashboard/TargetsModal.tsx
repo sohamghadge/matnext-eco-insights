@@ -362,7 +362,7 @@ export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType
       className="targets-modal"
     >
       <div className="mt-4">
-        {targetType === 'material' && (
+        {/* {targetType === 'material' && (
           <Table
             dataSource={eprTargetData}
             columns={[
@@ -376,10 +376,10 @@ export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType
             scroll={{ y: 300 }}
             title={() => <b>EPR Regulatory Targets</b>}
           />
-        )}
+        )} */}
         {hasCustomTargets ? (
           <div className="mt-6">
-            <h4 className="text-sm font-semibold mb-3 text-primary">Custom Targets</h4>
+            {/* <h4 className="text-sm font-semibold mb-3 text-primary">Custom Targets</h4> */}
             {targetType === 'material' ? (
               <Table
                 dataSource={materialTargetRows}

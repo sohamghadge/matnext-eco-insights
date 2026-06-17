@@ -19,6 +19,7 @@ interface DashboardHeaderProps {
   activeTab?: string;
   customTargets: TargetEntry[];
   onSaveTarget: (target: MaterialFiscalYearTargetPayload) => void;
+  onTargetUpdated?: () => void;
   materialOptions?: TagItem[];
   materialOptionsLoading?: boolean;
   materialTiles?: MaterialTileResp;
@@ -30,6 +31,7 @@ const DashboardHeader = ({
   activeTab,
   customTargets,
   onSaveTarget,
+  onTargetUpdated,
   materialOptions = [],
   materialOptionsLoading = false,
   materialTiles
@@ -234,6 +236,7 @@ const DashboardHeader = ({
         onClose={() => setViewTargetsOpen(false)}
         customTargets={customTargets}
         materialOptions={materialOptions}
+        onTargetUpdated={onTargetUpdated}
       />
       <PreviousRequestModal
         open={previousRequestsOpen}

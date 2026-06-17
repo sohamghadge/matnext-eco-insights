@@ -163,7 +163,7 @@ export const SetTargetsModal = ({
         return (
           <>
             <Form.Item name="materialTypeId" label="Select Material" rules={[{ required: true }]}>
-              <Select placeholder="Select material..." options={materialOptions.map(m => ({ value: m.id, label: m.name }))} />
+              <Select placeholder="Select material..." options={materialOptions.map(m => ({ value: m.id, label: m.name }))} disabled={!!initialValues} />
             </Form.Item>
             <Form.Item name="fiscalYear" label="Select FY" rules={[{ required: true }]}>
               <Select placeholder="Select FY..." options={fyOptions.map(fy => ({ value: fy?.split('-')?.[0], label: `FY ${fy}` }))} />
@@ -207,9 +207,10 @@ interface ViewTargetsModalProps {
   customTargets?: TargetEntry[];
   targetType?: TargetType;
   materialOptions?: TagItem[];
+  onTargetUpdated?: () => void;
 }
 
-export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType = 'material', materialOptions = [] }: ViewTargetsModalProps) => {
+export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType = 'material', materialOptions = [], onTargetUpdated }: ViewTargetsModalProps) => {
   const [targetList, setTargetList] = useState<MaterialTargetListData>({ list: [] })
   const [deleteTargetId, setDeleteTargetId] = useState<string | number | null>(null);
   const [editingTarget, setEditingTarget] = useState<MaterialFiscalYearTarget | null>(null);
@@ -294,6 +295,7 @@ export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType
       if (response?.data) {
         setEditingTarget(null);
         getTargetList();
+        onTargetUpdated?.();
         notification.success({
           message: 'Target updated Successfully',
           placement: 'topRight',
@@ -324,6 +326,7 @@ export const ViewTargetsModal = ({ open, onClose, customTargets = [], targetType
       if (response?.data) {
         setDeleteTargetId(null);
         getTargetList()
+        onTargetUpdated?.();
         notification.success({
           message: 'Target removed Successfully',
           placement: 'topRight',

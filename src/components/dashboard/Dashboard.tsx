@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useCallback, useEffect } from 'react';
 import { Tabs, ConfigProvider, notification } from 'antd';
 import { Building2, Recycle, Factory, Truck, Flame, BarChart2, GitBranch } from 'lucide-react';
@@ -13,8 +14,7 @@ import DashboardHeader from './DashboardHeader';
 import DataValidationBanner from './DataValidationBanner';
 import { FilterState, defaultFilters } from '@/data/dashboardData';
 import { Leaf } from 'lucide-react';
-import { getMaterialTileData, getMaterialType, MaterialFiscalYearTargetPayload, MaterialTileResp, setMaterialTargetApi, type TagsResponse } from '@/services/dashboardApi';
-import { apiResponse } from '@/services/response.interface';
+import { getMaterialTileData, getMaterialType, MaterialFiscalYearTargetPayload, MaterialTileResp, setMaterialTargetApi, type SetMaterialTargetResponse, type TagsResponse } from '@/services/dashboardApi';
 import { formatDateToDDMMYYYY } from '@/utils/dayjs';
 import { useAuthStore } from '@/stores/authStore';
 import type { TargetEntry } from './TargetsModal';
@@ -45,7 +45,7 @@ const Dashboard = () => {
     staleTime: 10 * 60 * 1000,
   });
 
-  useEffect(() => {
+  const getMaterialTiles = useCallback(() => {
     if (!token || !filters.materials.length) {
       setMaterialTiles({ list: [] });
       return;
@@ -63,7 +63,11 @@ const Dashboard = () => {
     }).catch(() => {
       setMaterialTiles({ list: [] });
     });
-  }, [filters, token, userData]);
+  }, [filters, token, userData?.id]);
+
+  useEffect(() => {
+    getMaterialTiles()
+  }, [getMaterialTiles]);
 
 
   const handleSaveTarget = useCallback(async (targetValue: MaterialFiscalYearTargetPayload) => {
@@ -76,11 +80,12 @@ const Dashboard = () => {
       target
     }
     await setMaterialTargetApi(payload)
-      .then((response: apiResponse) => {
+      .then((response: SetMaterialTargetResponse) => {
         if (response.data) {
+          getMaterialTiles()
           notification.success({
             message: 'Target Set Successfully',
-            description: `Target for ${materialTypeId} has been updated for ${fiscalYear}.`,
+            description: `Target for ${response.data.materialTypeName} has been updated for ${fiscalYear}.`,
             placement: 'topRight',
             className: '!bg-emerald-50 !border-emerald-200',
             style: { border: '1px solid #a7f3d0', borderRadius: '12px' },
@@ -101,7 +106,7 @@ const Dashboard = () => {
           duration: 4,
         });
       });
-  }, [userData?.id]);
+  }, [getMaterialTiles, userData?.id]);
 
   const handleFilterChange = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setIsLoading(true);
@@ -228,6 +233,7 @@ const Dashboard = () => {
           activeTab={activeTab}
           customTargets={customTargets}
           onSaveTarget={handleSaveTarget}
+          onTargetUpdated={getMaterialTiles}
           materialOptions={materialOptions?.list || []}
           materialOptionsLoading={materialTypeQuery.isLoading}
           materialTiles={materialTiles}

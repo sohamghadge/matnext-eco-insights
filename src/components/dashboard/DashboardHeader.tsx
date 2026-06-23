@@ -6,6 +6,7 @@ import { SetTargetsModal, ViewTargetsModal, type TargetEntry } from './TargetsMo
 import PreviousRequestModal from './PreviousRequestModal';
 import dayjs, { Dayjs } from 'dayjs';
 import {
+  type FiscalYearItem,
   type MaterialFiscalYearTargetPayload,
   triggerDashboardSheetApi,
   type MaterialTileResp,
@@ -20,6 +21,8 @@ interface DashboardHeaderProps {
   customTargets: TargetEntry[];
   onSaveTarget: (target: MaterialFiscalYearTargetPayload) => void;
   onTargetUpdated?: () => void;
+  fiscalYearOptions?: FiscalYearItem[];
+  fiscalYearLoading?: boolean;
   materialOptions?: TagItem[];
   materialOptionsLoading?: boolean;
   materialTiles?: MaterialTileResp;
@@ -32,6 +35,8 @@ const DashboardHeader = ({
   customTargets,
   onSaveTarget,
   onTargetUpdated,
+  fiscalYearOptions = [],
+  fiscalYearLoading = false,
   materialOptions = [],
   materialOptionsLoading = false,
   materialTiles
@@ -88,6 +93,22 @@ const DashboardHeader = ({
         {/* Filter Bar - Row 1 */}
         <div className="glass px-6 py-4">
           <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">
+                Fiscal Year
+              </label>
+              <Select
+                value={filters.fiscalYear ?? undefined}
+                onChange={(value) => onFilterChange('fiscalYear', value)}
+                style={{ width: 140 }}
+                loading={fiscalYearLoading}
+                options={fiscalYearOptions.map((item) => ({
+                  value: item.year,
+                  label: item.year,
+                }))}
+              />
+            </div>
+
             {/* Custom Date From */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">

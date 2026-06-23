@@ -14,10 +14,26 @@ import DashboardHeader from './DashboardHeader';
 import DataValidationBanner from './DataValidationBanner';
 import { FilterState, defaultFilters } from '@/data/dashboardData';
 import { Leaf } from 'lucide-react';
-import { getMaterialTileData, getMaterialType, MaterialFiscalYearTargetPayload, MaterialTileResp, setMaterialTargetApi, type SetMaterialTargetResponse, type TagsResponse } from '@/services/dashboardApi';
+import { getFiscalYears, getMaterialTileData, getMaterialType, MaterialFiscalYearTargetPayload, MaterialTileResp, setMaterialTargetApi, type FiscalYearItem, type SetMaterialTargetResponse, type TagsResponse } from '@/services/dashboardApi';
 import { formatDateToDDMMYYYY } from '@/utils/dayjs';
 import { useAuthStore } from '@/stores/authStore';
 import type { TargetEntry } from './TargetsModal';
+
+const getFiscalYearDateRange = (fiscalYear: string | number | null) => {
+  if (fiscalYear === null || fiscalYear === undefined || fiscalYear === '') {
+    return null;
+  }
+
+  const startYear = Number(fiscalYear);
+  if (Number.isNaN(startYear)) {
+    return null;
+  }
+
+  return {
+    dateFrom: new Date(startYear, 3, 1),
+    dateTo: new Date(startYear + 1, 2, 31),
+  };
+};
 
 const Dashboard = () => {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
@@ -26,6 +42,8 @@ const Dashboard = () => {
   const [customTargets, setCustomTargets] = useState<TargetEntry[]>([]);
   const [materialOptions, setMaterialOptions] = useState<TagsResponse>({})
   const [materialTiles, setMaterialTiles] = useState<MaterialTileResp>({});
+  const [fiscalYearOptions, setFiscalYearOptions] = useState<FiscalYearItem[]>([]);
+  const [fiscalYearLoading, setFiscalYearLoading] = useState(false);
   const token = useAuthStore((state) => state.token);
   const userData = useAuthStore((state) => state.userData);
 
@@ -37,13 +55,49 @@ const Dashboard = () => {
         setMaterialOptions(response?.data)
         const defaultMaterials = ["Aluminium", "Copper", "Plastic", "Steel"]
         const filteredMaterials = response.data?.list?.filter(v => defaultMaterials.includes(v?.name ?? ''))
-        setFilters({ ...filters, materials: filteredMaterials.map(v => v?.id) || [] })
+        setFilters((prev) => ({
+          ...prev,
+          materials: filteredMaterials.map(v => v?.id) || [],
+        }))
       }
       return response?.data;
     },
     enabled: Boolean(token),
     staleTime: 10 * 60 * 1000,
   });
+
+  useEffect(() => {
+    if (fiscalYearOptions && fiscalYearOptions.length) return
+    if (!token) {
+      setFiscalYearOptions([]);
+      setFiscalYearLoading(false);
+      return;
+    }
+
+    setFiscalYearLoading(true);
+    getFiscalYears()
+      .then((response) => {
+        const years = response.data?.list ?? [];
+        setFiscalYearOptions(years);
+
+        if (years.length > 0) {
+          const lastYear = years[years.length - 1]?.year ?? null;
+          const dateRange = getFiscalYearDateRange(lastYear);
+          setFilters((prev) => ({
+            ...prev,
+            fiscalYear: lastYear,
+            dateFrom: dateRange?.dateFrom ?? prev.dateFrom,
+            dateTo: dateRange?.dateTo ?? prev.dateTo,
+          }));
+        }
+      })
+      .catch(() => {
+        setFiscalYearOptions([]);
+      })
+      .finally(() => {
+        setFiscalYearLoading(false);
+      });
+  }, [token]);
 
   const getMaterialTiles = useCallback(() => {
     if (!token || !filters.materials.length) {
@@ -54,6 +108,7 @@ const Dashboard = () => {
       params: {
         materialTypeIds: filters.materials.join(","),
         userId: userData?.id,
+        fiscalyear: filters.fiscalYear,
         fromDate: formatDateToDDMMYYYY(filters.dateFrom),
         toDate: formatDateToDDMMYYYY(filters.dateTo),
         elvSourced: filters.sourcedFromELV === 'Yes',
@@ -110,7 +165,20 @@ const Dashboard = () => {
 
   const handleFilterChange = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setIsLoading(true);
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => {
+      if (key === 'fiscalYear') {
+        const dateRange = getFiscalYearDateRange(value as FilterState['fiscalYear']);
+
+        return {
+          ...prev,
+          fiscalYear: value as FilterState['fiscalYear'],
+          dateFrom: dateRange?.dateFrom ?? prev.dateFrom,
+          dateTo: dateRange?.dateTo ?? prev.dateTo,
+        };
+      }
+
+      return { ...prev, [key]: value };
+    });
 
     // Simulate data fetching
     setTimeout(() => {
@@ -234,6 +302,8 @@ const Dashboard = () => {
           customTargets={customTargets}
           onSaveTarget={handleSaveTarget}
           onTargetUpdated={getMaterialTiles}
+          fiscalYearOptions={fiscalYearOptions}
+          fiscalYearLoading={fiscalYearLoading}
           materialOptions={materialOptions?.list || []}
           materialOptionsLoading={materialTypeQuery.isLoading}
           materialTiles={materialTiles}

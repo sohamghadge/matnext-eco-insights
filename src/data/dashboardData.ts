@@ -6,8 +6,9 @@ const _elvCollectionOverrides: Record<string, Record<string, number>> =
     .elvHotspot?.collectionOverrides ?? {};
 
 export interface FilterState {
-  dateFrom: Date;
-  dateTo: Date;
+  fiscalYear: string | number | null;
+  dateFrom: Date | null;
+  dateTo: Date | null;
   plant: string;
   targetMarket: string;
   sourcedFromELV: string;
@@ -15,8 +16,9 @@ export interface FilterState {
 }
 
 export const defaultFilters: FilterState = {
-  dateFrom: new Date('2026-01-01'),
-  dateTo: new Date('2026-01-31'),
+  fiscalYear: null,
+  dateFrom: null,
+  dateTo: null,
   plant: 'All',
   targetMarket: 'Domestic',
   sourcedFromELV: 'Yes',
@@ -76,6 +78,8 @@ export const msilCorporateEcoScore = 8.9;
 // Helper to determine data multiplier based on date range
 // Default range is ~30 days (1 month) -> multiplier 1
 const getDataMultiplier = (filters: FilterState): number => {
+  if (!filters.dateFrom || !filters.dateTo) return 1;
+
   const days = (filters.dateTo.getTime() - filters.dateFrom.getTime()) / (1000 * 3600 * 24);
   // Base is 30 days. If 365 days selected, data should be ~12x
   // Adding some randomness
@@ -87,6 +91,8 @@ const getDataMultiplier = (filters: FilterState): number => {
 
 // Helper to calculate proration factor based on Annual Targets (365 days)
 export const getProrationFactor = (filters: FilterState): number => {
+  if (!filters.dateFrom || !filters.dateTo) return 1;
+
   const days = Math.max(1, (filters.dateTo.getTime() - filters.dateFrom.getTime()) / (1000 * 3600 * 24));
   // Return fraction of year
   return days / 365;
@@ -1281,13 +1287,21 @@ export const getMaterialTrendData = (filters: FilterState) => {
   }));
 };
 
-export const getFinancialYear = (date: Date): string => {
+export const getFinancialYear = (date: Date | null | undefined): string => {
+  if (!date) return '';
+
   const month = date.getMonth();
   const year = date.getFullYear();
   if (month >= 3) { // April onwards
     return `${year}-${(year + 1).toString().slice(2)}`;
   }
   return `${year - 1}-${year.toString().slice(2)}`;
+};
+export const getFinancialYearTargetKey = (date: Date | null | undefined): string => {
+  if (!date) return '';
+
+  const year = date.getFullYear();
+  return `20${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
 };
 
 // ============================================

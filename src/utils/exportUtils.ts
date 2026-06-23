@@ -2,8 +2,8 @@ import * as XLSX from 'xlsx';
 import { FilterState, getFinancialYear } from '@/data/dashboardData';
 
 // Helper to format date for export
-const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+const formatDate = (date: Date | null | undefined): string => {
+  return date ? date.toISOString().split('T')[0] : '';
 };
 
 // Generic CSV export

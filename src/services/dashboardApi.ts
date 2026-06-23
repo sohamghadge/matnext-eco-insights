@@ -102,6 +102,21 @@ export type MaterialTargetListResponse = ApiResponse<MaterialTargetListData>;
 export type SetMaterialTargetResponse = ApiResponse<MaterialFiscalYearTarget>;
 export type DeleteMaterialTargetResponse = ApiResponse<MaterialFiscalYearTarget>;
 
+export type FiscalYearItem = {
+  id: string | number;
+  year: string | number;
+};
+
+export type FiscalYearListData = {
+  list: FiscalYearItem[];
+  pageNo?: number;
+  hasMore?: boolean;
+  lastPage?: number;
+  fullCount?: number;
+};
+
+export type FiscalYearListResponse = ApiResponse<FiscalYearListData>;
+
 export type DashboardSheetType = 'DASHBOARD_MATERIAL_TYPES_TILE_SHEET';
 
 export type DashboardMaterialSheetData = {
@@ -174,7 +189,7 @@ export type UserReportsData = {
 
 export type UserReportsResponse = ApiResponse<UserReportsData | UserReportRequest[]>;
 
-const { MATERIAL_LIST, MATERIAL_TARGET_TILE, MATERIAL_TARGET, TRIGGER_SHEET, USER_REPORTS } = API_ROUTES
+const { MATERIAL_LIST, MATERIAL_TARGET_TILE, MATERIAL_TARGET, FISCAL_YEAR, TRIGGER_SHEET, USER_REPORTS } = API_ROUTES
 
 export const getMaterialType = ({ params }) =>
   get<ApiResponse<TagsResponse>>(MATERIAL_LIST, params);
@@ -184,6 +199,9 @@ export const getMaterialTileData = ({ params }: { params: DashboardQueryParams }
 
 export const getMaterialTarget = ({ params }: { params: DashboardQueryParams }) =>
   get<MaterialTargetListResponse>(MATERIAL_TARGET, params);
+
+export const getFiscalYears = () =>
+  get<FiscalYearListResponse>(FISCAL_YEAR);
 
 export const setMaterialTargetApi = (payload: MaterialFiscalYearTargetPayload) =>
   post<SetMaterialTargetResponse, MaterialFiscalYearTargetPayload>(MATERIAL_TARGET, payload);

@@ -128,6 +128,7 @@ export type DashboardMaterialSheetData = {
 
 export type TriggerDashboardSheetPayload = {
   sheetType: DashboardSheetType;
+  fiscalYear: string | number | null;
   materialTypeIds: (string | number)[];
   fromDate: string | null;
   toDate: string | null;

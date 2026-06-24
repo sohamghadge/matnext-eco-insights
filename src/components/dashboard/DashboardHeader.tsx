@@ -58,6 +58,7 @@ const DashboardHeader = ({
     try {
       const response = await triggerDashboardSheetApi({
         sheetType: 'DASHBOARD_MATERIAL_TYPES_TILE_SHEET',
+        fiscalYear: filters.fiscalYear,
         materialTypeIds: filters.materials,
         fromDate: formatDateToDDMMYYYY(filters.dateFrom),
         toDate: formatDateToDDMMYYYY(filters.dateTo),

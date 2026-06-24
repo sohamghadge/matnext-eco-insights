@@ -108,7 +108,7 @@ const Dashboard = () => {
       params: {
         materialTypeIds: filters.materials.join(","),
         userId: userData?.id,
-        fiscalyear: filters.fiscalYear,
+        fiscalYear: filters.fiscalYear,
         fromDate: formatDateToDDMMYYYY(filters.dateFrom),
         toDate: formatDateToDDMMYYYY(filters.dateTo),
         elvSourced: filters.sourcedFromELV === 'Yes',

@@ -12,6 +12,7 @@ import { SetTargetsModal, ViewTargetsModal } from '../TargetsModal';
 import dayjs from 'dayjs';
 import InteractiveIndiaMap from '../InteractiveIndiaMap';
 import AIInsightsWidget from '../AIInsightsWidget';
+import ScrapSalesSummary from '../ScrapSalesSummary';
 import {
   FilterState,
   rvsfFilterOptions,
@@ -248,6 +249,9 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
         score={rvsfSummaryData.complianceScore}
         type="RVSF"
       />
+
+      {/* Scrap Sales Summary - Invoice Upload & OCR */}
+      <ScrapSalesSummary />
 
       {/* Summary Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -5,4 +5,12 @@ export const API_ROUTES = {
     FISCAL_YEAR: `/job-management/v1/fiscalyear`,
     TRIGGER_SHEET: `/dashboard-management/v1/trigger/sheet`,
     USER_REPORTS: (pageNo: number) => `/job-management/v1/userreports/${pageNo}`,
+    FILE_UPLOAD: `/user-management/v1/file`,
+    OCR: `/job-management/v1/ocr`,
+    INVOICE_DETAILS: (pageNo: number) => `/job-management/v1/invoice-details/${pageNo}?pageSize=5`,
+    SCRAP_SALES_AVERAGE_RATE: `/dashboard-management/v1/scrap-sales/average-rate`,
+    SCRAP_SALES_TOTAL_QUANTITY: `/dashboard-management/v1/scrap-sales/total-quantity`,
+    SCRAP_SALES_TOTAL_VALUE: `/dashboard-management/v1/scrap-sales/total-value`,
+    SCRAP_SALES_CATEGORY_DISTRIBUTION: `/dashboard-management/v1/scrap-sales/category-distribution`,
+    SCRAP_SALES_TOP_BUYERS: (pageNo: number) => `/dashboard-management/v1/scrap-sales/top-buyers/${pageNo}`,
 }

@@ -32,13 +32,15 @@ import {
   getProrationFactor,
 } from '@/data/dashboardData';
 import RankingTable from '../RankingTable';
+import type { TagItem } from '@/services/dashboardApi';
 
 interface RVSFTabProps {
   isLoading: boolean;
   filters: FilterState;
+  materialOptions?: TagItem[];
 }
 
-const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
+const RVSFTab = ({ isLoading, filters, materialOptions = [] }: RVSFTabProps) => {
   // Global filters
   const { dateFrom, dateTo } = filters;
 
@@ -249,9 +251,6 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
         score={rvsfSummaryData.complianceScore}
         type="RVSF"
       />
-
-      {/* Scrap Sales Summary - Invoice Upload & OCR */}
-      <ScrapSalesSummary />
 
       {/* Summary Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -509,6 +508,9 @@ const RVSFTab = ({ isLoading, filters }: RVSFTabProps) => {
           </div>
         </ExpandableWidget>
       </div>
+
+      {/* Scrap Sales Summary - Invoice Upload & OCR */}
+      <ScrapSalesSummary filters={filters} materialOptions={materialOptions} />
 
       {/* MSIL Component Dispatch Visualization */}
       <div className="bg-card rounded-xl p-5 shadow-card border border-border">

@@ -1,106 +1,276 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Upload, Table, Button, Modal, Divider, Tag, message } from 'antd';
-import { InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import type { TableColumnsType } from 'antd';
+import { InboxOutlined, EyeOutlined } from '@ant-design/icons';
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
-import { uploadFile, getOcrData } from '@/utils/api';
+import {
+  uploadFile,
+  getOcrData,
+  getInvoiceDetailsList,
+  getScrapSalesAverageRate,
+  getScrapSalesCategoryDistribution,
+  getScrapSalesTotalQuantity,
+  getScrapSalesTotalValue,
+  getScrapSalesTopBuyers,
+  type ScrapSalesMetricsParams,
+  type InvoiceDetailsListItem,
+} from '@/utils/api';
+import { formatDateToDDMMYYYY } from '@/utils/dayjs';
+import type { FilterState } from '@/data/dashboardData';
+import type { TagItem } from '@/services/dashboardApi';
+import { categoryDistributionColors, materialTypesList, numberFormatting } from './dashboard.description';
 
 const { Dragger } = Upload;
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const DEFAULT_PAGE_SIZE = 5;
+const SCRAP_RATE_LINE_COLOR = '#20A35A';
 
-interface LineItem {
+interface InvoiceHistoryRow extends InvoiceDetailsListItem {
   key: string;
-  scrapCategory: string;
-  materialDescription: string;
-  hsnSac: string;
-  quantity: number;
-  uom: string;
-  ratePerKg: number;
-  grossAmount: number;
 }
 
-interface Invoice {
-  key: string;
-  dmsId: string;
-  fileName: string;
-  uploadedAt: string;
-  invoiceNumber: string;
-  invoiceDate: string;
-  deliveryNote: string;
-  ewayBillNumber: string;
-  buyersOrderNumber: string;
-  consignee: string;
-  buyer: string;
-  dispatchedThrough: string;
-  vehicleNumber: string;
-  pan: string;
-  gstNumber: string;
-  lineItems: LineItem[];
-  taxableValue: number;
-  igstRate: number;
-  igstAmount: number;
-  totalTaxAmount: number;
-  totalAmount: number;
+interface TopBuyer {
+  buyerName: string;
+  quantityPurchased: number;
+  totalPurchaseValue: number;
 }
 
-const PIE_COLORS = ['#5a7a32', '#e4ae52', '#3b82f6', '#ec4899', '#22d3d3', '#8b5cf6'];
+interface ScrapSalesSummaryProps {
+  filters: FilterState;
+  materialOptions?: TagItem[];
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mapOcrToInvoice = (ocrData: any, dmsId: string, fileName: string): Invoice => {
-  const invoiceDetails = ocrData?.invoiceDetails || {};
-  const partyDetails = ocrData?.partyDetails || {};
-  const transportDetails = ocrData?.transportDetails || {};
-  const items = ocrData?.items || ocrData?.lineItems || [];
-  const taxDetails = ocrData?.taxDetails || {};
+type MonthlyMetricPoint = {
+  monthYear?: string;
+  value?: number;
+};
 
-  const lineItems: LineItem[] = (Array.isArray(items) ? items : [items]).map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (item: any, idx: number) => ({
-      key: `${dmsId}-item-${idx}`,
-      scrapCategory: item?.scrapCategory || item?.category || '',
-      materialDescription: item?.materialDescription || item?.description || '',
-      hsnSac: item?.hsnSac || item?.hsn || '',
-      quantity: parseFloat(item?.quantity) || 0,
-      uom: item?.uom || item?.unitOfMeasurement || 'Kg',
-      ratePerKg: parseFloat(item?.ratePerKg || item?.rate) || 0,
-      grossAmount: parseFloat(item?.grossAmount || item?.amount) || 0,
-    }),
-  );
+type AverageRateGraphData = {
+  averageScrapSaleRate?: number;
+  monthlyTrend?: MonthlyMetricPoint[];
+};
 
+type TotalQuantityGraphData = {
+  totalScrapSaleQuantity?: number;
+  quantitySoldOverTime?: number;
+};
+
+type TotalValueGraphData = {
+  totalScrapSalesValue?: number;
+  monthlyTrend?: MonthlyMetricPoint[];
+};
+
+type CategoryDistributionItem = {
+  name: string;
+  value: number;
+  percentage?: number;
+  color?: string;
+};
+
+type TopBuyersGraphData = {
+  list: TopBuyer[];
+  pageNo: number;
+  fullCount: number;
+  lastPage: number;
+  hasMore: boolean;
+};
+
+type CategoryDistributionApiItem = {
+  category?: string;
+  quantity?: number | string | null;
+  percentage?: number;
+};
+
+type CategoryDistributionApiResponse = {
+  list?: CategoryDistributionApiItem[];
+};
+
+type TopBuyersApiResponse = {
+  list?: TopBuyer[];
+  pageNo?: number;
+  fullCount?: number;
+  lastPage?: number;
+  hasMore?: boolean;
+};
+
+type ScrapSalesGraphData = {
+  averageRate: AverageRateGraphData;
+  totalQuantity: TotalQuantityGraphData;
+  totalValue: TotalValueGraphData;
+  categoryDistribution: CategoryDistributionItem[];
+  topBuyers: TopBuyersGraphData;
+};
+
+const INITIAL_GRAPH_DATA: ScrapSalesGraphData = {
+  averageRate: {},
+  totalQuantity: {},
+  totalValue: {},
+  categoryDistribution: [],
+  topBuyers: {
+    list: [],
+    pageNo: 1,
+    fullCount: 0,
+    lastPage: 0,
+    hasMore: false,
+  },
+};
+
+const toNumber = (value: string | number | null | undefined) => {
+  if (value === null || value === undefined || value === '') return 0;
+
+  const parsedValue = Number.parseFloat(String(value).replace(/,/g, ''));
+  return Number.isNaN(parsedValue) ? 0 : parsedValue;
+};
+
+const getField = <T,>(
+  camelCaseValue: T | null | undefined,
+  snakeCaseValue: T | null | undefined,
+  fallback: T,
+): T => {
+  if (camelCaseValue !== null && camelCaseValue !== undefined) return camelCaseValue;
+  if (snakeCaseValue !== null && snakeCaseValue !== undefined) return snakeCaseValue;
+  return fallback;
+};
+
+const buildScrapSalesMetricsPayload = (
+  filters: FilterState,
+  materialOptions: TagItem[],
+): ScrapSalesMetricsParams => {
+  const selectedMaterials = materialOptions?.filter(v => filters?.materials?.includes(v?.id))?.map(v => v?.name)?.map(v => materialTypesList?.[v] || 'OTHER')
+  const materialTypes = [...new Set(selectedMaterials)]
   return {
-    key: dmsId,
-    dmsId,
-    fileName,
-    uploadedAt: new Date().toISOString(),
-    invoiceNumber: invoiceDetails?.invoiceNumber || ocrData?.invoiceNumber || '',
-    invoiceDate: invoiceDetails?.invoiceDate || ocrData?.invoiceDate || '',
-    deliveryNote: invoiceDetails?.deliveryNote || ocrData?.deliveryNote || '',
-    ewayBillNumber: invoiceDetails?.ewayBillNumber || ocrData?.ewayBillNumber || '',
-    buyersOrderNumber: invoiceDetails?.buyersOrderNumber || ocrData?.buyersOrderNumber || '',
-    consignee: partyDetails?.consignee || ocrData?.consignee || '',
-    buyer: partyDetails?.buyer || ocrData?.buyer || '',
-    dispatchedThrough: transportDetails?.dispatchedThrough || ocrData?.dispatchedThrough || '',
-    vehicleNumber: transportDetails?.vehicleNumber || ocrData?.vehicleNumber || '',
-    pan: ocrData?.pan || ocrData?.companyPan || '',
-    gstNumber: ocrData?.gstNumber || ocrData?.gstin || '',
-    lineItems,
-    taxableValue: parseFloat(taxDetails?.taxableValue || ocrData?.taxableValue) || 0,
-    igstRate: parseFloat(taxDetails?.igstRate || ocrData?.igstRate) || 0,
-    igstAmount: parseFloat(taxDetails?.igstAmount || ocrData?.igstAmount) || 0,
-    totalTaxAmount: parseFloat(taxDetails?.totalTaxAmount || ocrData?.totalTaxAmount) || 0,
-    totalAmount: parseFloat(ocrData?.totalAmount || invoiceDetails?.totalAmount) || 0,
+    fromDate: formatDateToDDMMYYYY(filters.dateFrom) ?? '',
+    toDate: formatDateToDDMMYYYY(filters.dateTo) ?? '',
+    materialType: materialTypes.join(',')
   };
 };
 
-const ScrapSalesSummary = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryProps) => {
+  const [invoices, setInvoices] = useState<InvoiceHistoryRow[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceHistoryRow | null>(null);
+  const [invoicePage, setInvoicePage] = useState(1);
+  const [paginationTotal, setPaginationTotal] = useState(0);
+  const [graphData, setGraphData] = useState<ScrapSalesGraphData>(INITIAL_GRAPH_DATA)
+  const [topBuyersLoading, setTopBuyersLoading] = useState(false);
+  // const [modalOpen, setModalOpen] = useState(false);
+
+  const loadInvoiceHistory = useCallback(async (pageNo: number) => {
+    setInvoiceLoading(true);
+    try {
+      const invoiceDetails = await getInvoiceDetailsList(pageNo);
+      if (!invoiceDetails) {
+        message.error('Failed to load invoice history');
+        return false;
+      }
+
+      setInvoices(invoiceDetails.list.map((item, index) => ({
+        ...item,
+        key: String(item.id ?? `${pageNo}-${getField(item.invoiceNumber, item.invoice_number, 'invoice')}-${index}`),
+      })));
+      setInvoicePage(invoiceDetails.pageNo || pageNo);
+      setPaginationTotal(invoiceDetails.fullCount || 0);
+
+      return true;
+    } catch {
+      message.error('Failed to load invoice history');
+      return false;
+    } finally {
+      setInvoiceLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadInvoiceHistory(1);
+  }, [loadInvoiceHistory]);
+
+  const loadTopBuyers = useCallback(async (pageNo: number) => {
+    if (!filters.dateFrom || !filters.dateTo || !filters.materials.length) return false;
+
+    setTopBuyersLoading(true);
+    try {
+      const payload = buildScrapSalesMetricsPayload(filters, materialOptions);
+      const topBuyers = await getScrapSalesTopBuyers<TopBuyersApiResponse>(pageNo, payload);
+      const topBuyersData: TopBuyersGraphData = {
+        list: topBuyers?.list ?? [],
+        pageNo: topBuyers?.pageNo ?? pageNo,
+        fullCount: topBuyers?.fullCount ?? 0,
+        lastPage: topBuyers?.lastPage ?? 0,
+        hasMore: topBuyers?.hasMore ?? false,
+      };
+
+      setGraphData((prev) => ({
+        ...prev,
+        topBuyers: topBuyersData,
+      }));
+
+      return true;
+    } catch (error) {
+      console.error('Top Buyers API error:', error);
+      return false;
+    } finally {
+      setTopBuyersLoading(false);
+    }
+  }, [filters, materialOptions]);
+
+  useEffect(() => {
+    const loadScrapSalesMetrics = async () => {
+      try {
+        const payload = buildScrapSalesMetricsPayload(filters, materialOptions);
+        const [
+          averageRate,
+          totalQuantity,
+          totalValue,
+          categoryDistribution,
+        ] = await Promise.all([
+          getScrapSalesAverageRate(payload),
+          getScrapSalesTotalQuantity(payload),
+          getScrapSalesTotalValue(payload),
+          getScrapSalesCategoryDistribution<CategoryDistributionApiResponse>(payload),
+          loadTopBuyers(1),
+        ]);
+        const categoryDistributionList: CategoryDistributionItem[] = categoryDistribution?.list?.map(v => ({
+          name: v?.category,
+          value: toNumber(v?.quantity),
+          percentage: v?.percentage,
+          color: categoryDistributionColors?.[v?.category],
+        })) ?? [];
+        setGraphData((prev) => ({
+          ...prev,
+          averageRate: averageRate ?? {},
+          totalQuantity: totalQuantity ?? {},
+          totalValue: totalValue ?? {},
+          categoryDistribution: categoryDistributionList,
+        }))
+
+      } catch (error) {
+        console.error('Scrap Sales metrics API error:', error);
+      }
+    };
+
+    if (!filters.dateFrom || !filters.dateTo || !filters.materials.length) return;
+
+    void loadScrapSalesMetrics();
+  }, [filters.dateFrom, filters.dateTo, filters.materials, materialOptions, loadTopBuyers]);
+
+  useEffect(() => {
+    if (!selectedInvoice) return;
+
+    const nextSelectedInvoice = invoices.find((invoice) => invoice.key === selectedInvoice.key);
+    if (nextSelectedInvoice) {
+      setSelectedInvoice(nextSelectedInvoice);
+      return;
+    }
+
+    setSelectedInvoice(null);
+    // setModalOpen(false);
+  }, [invoices, selectedInvoice]);
 
   const handleUpload = useCallback(async (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
@@ -121,137 +291,108 @@ const ScrapSalesSummary = () => {
         source: 'SCRAP_INVOICE',
         dmsId,
       });
-
-      const invoice = mapOcrToInvoice(ocrData || {}, dmsId, file.name);
-      setInvoices(prev => [invoice, ...prev]);
+      if (!ocrData) {
+        message.error('Failed to process invoice');
+        return false;
+      }
       message.success('Invoice processed successfully');
+      await loadInvoiceHistory(1);
     } catch {
       message.error('Failed to process invoice');
     } finally {
       setUploading(false);
     }
     return false;
-  }, []);
+  }, [loadInvoiceHistory]);
 
-  const handleDelete = useCallback((dmsId: string) => {
-    setInvoices(prev => prev.filter(inv => inv.dmsId !== dmsId));
-    if (selectedInvoice?.dmsId === dmsId) {
-      setSelectedInvoice(null);
-      setModalOpen(false);
-    }
-  }, [selectedInvoice]);
-
-  // KPI calculations
-  const kpi = useMemo(() => {
-    if (!invoices.length) return null;
-
-    let totalQty = 0;
-    let totalVal = 0;
-    const categoryMap: Record<string, number> = {};
-    const buyerMap: Record<string, { qty: number; val: number }> = {};
-    const monthMap: Record<string, { qty: number; val: number }> = {};
-
-    invoices.forEach(inv => {
-      const month = inv.invoiceDate?.substring(0, 7) || 'Unknown';
-      const buyer = inv.buyer || 'Unknown';
-
-      if (!buyerMap[buyer]) buyerMap[buyer] = { qty: 0, val: 0 };
-
-      inv.lineItems.forEach(item => {
-        totalQty += item.quantity;
-        totalVal += item.grossAmount;
-        const cat = item.scrapCategory || 'Others';
-        categoryMap[cat] = (categoryMap[cat] || 0) + item.quantity;
-        if (!monthMap[month]) monthMap[month] = { qty: 0, val: 0 };
-        monthMap[month].qty += item.quantity;
-        monthMap[month].val += item.grossAmount;
-        buyerMap[buyer].qty += item.quantity;
-        buyerMap[buyer].val += item.grossAmount;
-      });
-    });
-
-    const monthCount = Math.max(Object.keys(monthMap).length, 1);
-
-    return {
-      avgRate: totalQty > 0 ? totalVal / totalQty : 0,
-      avgMonthlyQty: totalQty / monthCount,
-      totalValue: totalVal,
-      categories: Object.entries(categoryMap)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value),
-      topBuyers: Object.entries(buyerMap)
-        .map(([name, d]) => ({ name, quantity: d.qty, value: d.val }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 10),
-      monthlyTrend: Object.entries(monthMap)
-        .map(([month, d]) => ({
-          month,
-          quantity: d.qty,
-          value: d.val,
-          rate: d.qty > 0 ? parseFloat((d.val / d.qty).toFixed(2)) : 0,
-        }))
-        .sort((a, b) => a.month.localeCompare(b.month)),
-    };
-  }, [invoices]);
-
-  const invoiceColumns = [
-    { title: 'File', dataIndex: 'fileName', key: 'fileName' },
-    { title: 'Invoice No.', dataIndex: 'invoiceNumber', key: 'invoiceNumber', render: (t: string) => t || '-' },
-    { title: 'Date', dataIndex: 'invoiceDate', key: 'invoiceDate', render: (t: string) => t || '-' },
-    { title: 'Buyer', dataIndex: 'buyer', key: 'buyer', render: (t: string) => t || '-' },
+  const invoiceColumns: TableColumnsType<InvoiceHistoryRow> = [
+    { title: 'ID', dataIndex: 'id', key: 'id', render: (t: number | null) => t ?? '-' },
+    { title: 'Creation Date', dataIndex: 'creationDate', key: 'creationDate', render: (t: number | null) => formatDateToDDMMYYYY(t) ?? '-' },
+    { title: 'Modification Date', dataIndex: 'modificationDate', key: 'modificationDate', render: (t: number | null) => formatDateToDDMMYYYY(t) ?? '-' },
+    { title: 'OCR Management ID', dataIndex: 'ocrManagementId', key: 'ocrManagementId', render: (t: number | null) => t ?? '-' },
+    { title: 'Scrap ID', dataIndex: 'scrapId', key: 'scrapId', render: (t: number | null) => t ?? '-' },
+    { title: 'User ID', dataIndex: 'userId', key: 'userId', render: (t: number | null) => t ?? '-' },
+    { title: 'Invoice Number', dataIndex: 'invoiceNumber', key: 'invoiceNumber', render: (t: string) => t || '-' },
+    { title: 'Invoice Date', dataIndex: 'invoiceDate', key: 'invoiceDate', render: (t: string) => t || '-' },
+    { title: 'Delivery Note', dataIndex: 'deliveryNote', key: 'deliveryNote', render: (t: string) => t || '-' },
+    { title: 'e-Way Bill Number', dataIndex: 'ewayBillNumber', key: 'ewayBillNumber', render: (t: string) => t || '-' },
+    { title: 'Buyers Order Number', dataIndex: 'buyersOrderNumber', key: 'buyersOrderNumber', render: (t: string) => t || '-' },
     {
-      title: 'Amount',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
-      render: (v: number) => v ? `₹ ${v.toLocaleString('en-IN')}` : '-',
-    },
-    {
-      title: 'Uploaded',
-      dataIndex: 'uploadedAt',
-      key: 'uploadedAt',
-      render: (t: string) => t ? new Date(t).toLocaleString() : '-',
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_: unknown, record: Invoice) => (
-        <div className="flex gap-2">
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => { setSelectedInvoice(record); setModalOpen(true); }}
-          />
-          <Button
-            type="link"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.dmsId)}
-          />
+      title: 'Ship To',
+      dataIndex: 'shipTo',
+      key: 'shipTo',
+      width: 400,
+      render: (t: string) => (
+        <div className="max-w-[400px] whitespace-normal break-words">
+          {t || '-'}
         </div>
       ),
     },
+    {
+      title: 'Bill To',
+      dataIndex: 'billTo',
+      key: 'billTo',
+      width: 400,
+      render: (t: string) => (
+        <div className="max-w-[400px] whitespace-normal break-words">
+          {t || '-'}
+        </div>
+      ),
+    },
+    { title: 'Dispatched Through', dataIndex: 'dispatchedThrough', key: 'dispatchedThrough', render: (t: string) => t || '-' },
+    { title: 'Scrap Item Category', dataIndex: 'scrapItemCategory', key: 'scrapItemCategory', render: (t: string) => t || '-' },
+    { title: 'Material Description', dataIndex: 'materialDescription', key: 'materialDescription', render: (t: string) => t || '-' },
+    { title: 'HSN/SAC', dataIndex: 'hsnSac', key: 'hsnSac', render: (t: string) => t || '-' },
+    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', render: (t: number | string | null | undefined) => t ? toNumber(t).toLocaleString('en-IN') : '-' },
+    { title: 'Unit Of Measurement', dataIndex: 'unitOfMeasurement', key: 'unitOfMeasurement', render: (t: string) => t || '-' },
+    { title: 'Rate Per Kg', dataIndex: 'ratePerKg', key: 'ratePerKg', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
+    { title: 'Gross Amount', dataIndex: 'grossAmount', key: 'grossAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
+    { title: 'Taxable Value', dataIndex: 'taxableValue', key: 'taxableValue', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
+    { title: 'IGST Rate Amount', dataIndex: 'igstRateAmount', key: 'igstRateAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
+    { title: 'Total Tax Amount', dataIndex: 'totalTaxAmount', key: 'totalTaxAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
+    { title: 'Company PAN', dataIndex: 'companyPan', key: 'companyPan', render: (t: string) => t || '-' },
+    { title: 'Vehicle Number', dataIndex: 'vehicleNumber', key: 'vehicleNumber', render: (t: string) => t || '-' },
+    { title: 'GST Number', dataIndex: 'gstNumber', key: 'gstNumber', render: (t: string) => t || '-' },
+    // {
+    //   title: 'Actions',
+    //   key: 'actions',
+    //   align: 'center',
+    //   fixed: 'right',
+    //   width: 80,
+    //   render: (_: unknown, record: InvoiceHistoryRow) => (
+    //     <div>
+    //       <Button
+    //         type="link"
+    //         icon={<EyeOutlined />}
+    //         onClick={() => { setSelectedInvoice(record); setModalOpen(true); }}
+    //       />
+    //     </div>
+    //   ),
+    // },
   ];
 
-  const lineItemColumns = [
-    { title: 'Category', dataIndex: 'scrapCategory', key: 'scrapCategory' },
-    { title: 'Description', dataIndex: 'materialDescription', key: 'materialDescription' },
-    { title: 'HSN/SAC', dataIndex: 'hsnSac', key: 'hsnSac' },
-    { title: 'Qty', dataIndex: 'quantity', key: 'quantity' },
-    { title: 'UOM', dataIndex: 'uom', key: 'uom' },
-    { title: 'Rate/Kg', dataIndex: 'ratePerKg', key: 'ratePerKg', render: (v: number) => v ? `₹ ${v}` : '-' },
-    { title: 'Amount', dataIndex: 'grossAmount', key: 'grossAmount', render: (v: number) => v ? `₹ ${v.toLocaleString('en-IN')}` : '-' },
+  // const lineItemColumns: TableColumnsType<InvoiceHistoryRow> = [
+  //   { title: 'Category', dataIndex: 'scrapItemCategory', key: 'scrapItemCategory' },
+  //   { title: 'Description', dataIndex: 'materialDescription', key: 'materialDescription' },
+  //   { title: 'HSN/SAC', dataIndex: 'hsnSac', key: 'hsnSac' },
+  //   { title: 'Qty', dataIndex: 'quantity', key: 'quantity', render: (v: number | string | null | undefined) => v ? toNumber(v).toLocaleString('en-IN') : '-' },
+  //   { title: 'UOM', dataIndex: 'unitOfMeasurement', key: 'unitOfMeasurement' },
+  //   { title: 'Rate/Kg', dataIndex: 'ratePerKg', key: 'ratePerKg', render: (v: number | string | null | undefined) => v ? `₹ ${toNumber(v).toLocaleString('en-IN')}` : '-' },
+  //   { title: 'Amount', dataIndex: 'grossAmount', key: 'grossAmount', render: (v: number | string | null | undefined) => v ? `₹ ${toNumber(v).toLocaleString('en-IN')}` : '-' },
+  // ];
+
+  const buyerColumns: TableColumnsType<TopBuyer> = [
+    { title: 'Buyer Name', dataIndex: 'buyerName', key: 'name' },
+    { title: 'Quantity Purchased', dataIndex: 'quantityPurchased', key: 'quantity', render: (v: number) => numberFormatting(v) },
+    { title: 'Total Purchased Value', dataIndex: 'totalPurchaseValue', key: 'value', render: (v: number) => numberFormatting(v) },
   ];
 
-  const buyerColumns = [
-    { title: 'Buyer', dataIndex: 'name', key: 'name' },
-    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', render: (v: number) => v.toLocaleString('en-IN') },
-    { title: 'Value', dataIndex: 'value', key: 'value', render: (v: number) => `₹ ${v.toLocaleString('en-IN')}` },
-  ];
+  const isSingleCategoryDistribution = graphData?.categoryDistribution?.length === 1;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       {/* Upload Section */}
-      <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+      <div className="bg-card rounded-xl p-5 shadow-card border border-border overflow-hidden">
         <h3 className="text-lg font-semibold text-foreground mb-4">Scrap Sales Summary - Invoice Upload</h3>
         <Dragger
           name="file"
@@ -266,125 +407,256 @@ const ScrapSalesSummary = () => {
             {uploading ? 'Processing...' : 'Click or drag scrap sales invoices (PDF, JPG, PNG)'}
           </p>
         </Dragger>
+
+        <div className="mt-6 min-w-0">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>
+          <div className="w-full overflow-x-auto">
+            <Table
+              columns={invoiceColumns}
+              dataSource={invoices.length ? invoices : []}
+              rowKey="key"
+              loading={invoiceLoading}
+              size="middle"
+              bordered
+              scroll={{ x: 'max-content' }}
+              pagination={{
+                current: invoicePage,
+                total: paginationTotal,
+                pageSize: DEFAULT_PAGE_SIZE,
+                hideOnSinglePage: true,
+                showSizeChanger: false,
+                onChange: (page) => {
+                  void loadInvoiceHistory(page);
+                },
+              }}
+            />
+          </div>
+        </div>
+
       </div>
 
-      {/* Invoice History */}
-      {invoices.length > 0 && (
-        <div className="bg-card rounded-xl p-5 shadow-card border border-border">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>
-          <Table
-            columns={invoiceColumns}
-            dataSource={invoices}
-            rowKey="dmsId"
-            size="middle"
-            bordered
-          />
-        </div>
-      )}
-
       {/* KPI Section */}
-      {kpi && (
-        <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* {kpi && ( */}
+      <>
+        {/* KPI Cards */}
+        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-blue-50 border-2 border-blue-500 rounded-xl p-4 text-center">
               <p className="text-sm text-blue-800">Avg Scrap Sale Rate</p>
-              <p className="text-2xl font-bold text-blue-700">₹ {kpi.avgRate.toFixed(2)} /Kg</p>
+              <p className="text-2xl font-bold text-blue-700">₹ {kpi?.avgRate?.toFixed(2)} /Kg</p>
             </div>
             <div className="bg-amber-50 border-2 border-amber-500 rounded-xl p-4 text-center">
               <p className="text-sm text-amber-800">Avg Monthly Quantity</p>
-              <p className="text-2xl font-bold text-amber-700">{kpi.avgMonthlyQty.toFixed(2)} Kg</p>
+              <p className="text-2xl font-bold text-amber-700">{kpi?.avgMonthlyQty?.toFixed(2)} Kg</p>
             </div>
             <div className="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-4 text-center">
               <p className="text-sm text-emerald-800">Total Scrap Sales Value</p>
-              <p className="text-2xl font-bold text-emerald-700">₹ {kpi.totalValue.toLocaleString('en-IN')}</p>
+              <p className="text-2xl font-bold text-emerald-700">₹ {kpi?.totalValue?.toLocaleString('en-IN')}</p>
             </div>
             <div className="bg-purple-50 border-2 border-purple-500 rounded-xl p-4 text-center">
               <p className="text-sm text-purple-800">Total Invoices</p>
-              <p className="text-2xl font-bold text-purple-700">{invoices.length}</p>
+              <p className="text-2xl font-bold text-purple-700">{paginationTotal}</p>
+            </div>
+          </div> */}
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Average Scrap Sale Rate */}
+          <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Average Scrap Sale Rate</h3>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={graphData?.averageRate ? graphData?.averageRate?.monthlyTrend?.map(v => ({ month: v?.monthYear, rate: v?.value })) : []} margin={{ top: 12, right: 16, left: -24, bottom: 0 }}>
+                  <CartesianGrid vertical={false} horizontal={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 11, fill: '#8B95A7' }}
+                    dy={10}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip
+                    cursor={{ stroke: SCRAP_RATE_LINE_COLOR, strokeOpacity: 0.14, strokeWidth: 1 }}
+                    contentStyle={{
+                      borderRadius: '12px',
+                      border: '1px solid #DDF4E6',
+                      boxShadow: '0 12px 30px rgba(32, 163, 90, 0.10)',
+                    }}
+                    formatter={(v: number) => [`₹ ${v}`, 'Average Rate/Kg']}
+                  />
+                  <Line
+                    type="natural"
+                    dataKey="rate"
+                    name="Average Rate/Kg"
+                    stroke={SCRAP_RATE_LINE_COLOR}
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    activeDot={{
+                      r: 5,
+                      fill: SCRAP_RATE_LINE_COLOR,
+                      stroke: '#E9F8EF',
+                      strokeWidth: 3,
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-5">
+              <p className="text-sm font-medium text-emerald-900">Average Scrap Sale Rate</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-700">
+                ₹ {numberFormatting(graphData?.averageRate?.averageScrapSaleRate)}
+              </p>
             </div>
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Monthly Trend */}
-            <div className="bg-card rounded-xl p-5 shadow-card border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Monthly Scrap Sales Trend</h3>
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={kpi.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-                    <RechartsTooltip />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="quantity" name="Quantity (Kg)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    <Line yAxisId="right" dataKey="value" name="Value (₹)" stroke="#e4ae52" strokeWidth={2} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+          <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Total Scrap Sales Value</h3>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={graphData?.totalValue?.monthlyTrend?.map(v => ({ month: v?.monthYear, tax: v?.value }))} margin={{ top: 12, right: 16, left: -24, bottom: 0 }}>
+                  <CartesianGrid vertical={false} horizontal={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 11, fill: '#8B95A7' }}
+                    dy={10}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip
+                    cursor={{ stroke: SCRAP_RATE_LINE_COLOR, strokeOpacity: 0.14, strokeWidth: 1 }}
+                    contentStyle={{
+                      borderRadius: '12px',
+                      border: '1px solid #DDF4E6',
+                      boxShadow: '0 12px 30px rgba(32, 163, 90, 0.10)',
+                    }}
+                    formatter={(v: number) => [`₹ ${numberFormatting(v)}`, 'Total Tax Amount']}
+                  />
+                  <Line
+                    type="natural"
+                    dataKey="tax"
+                    name="Total Tax Amount"
+                    stroke={SCRAP_RATE_LINE_COLOR}
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    activeDot={{
+                      r: 5,
+                      fill: SCRAP_RATE_LINE_COLOR,
+                      stroke: '#E9F8EF',
+                      strokeWidth: 3,
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-
-            {/* Rate/Kg Analysis */}
-            <div className="bg-card rounded-xl p-5 shadow-card border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Rate/Kg Analysis</h3>
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={kpi.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <RechartsTooltip formatter={(v: number) => [`₹ ${v}`, 'Rate/Kg']} />
-                    <Line dataKey="rate" name="Rate/Kg" stroke="#5a7a32" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Category Distribution */}
-            <div className="bg-card rounded-xl p-5 shadow-card border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Scrap Category Distribution</h3>
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={kpi.categories}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {kpi.categories.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Top Buyers */}
-            <div className="bg-card rounded-xl p-5 shadow-card border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Top Buyers</h3>
-              <Table
-                columns={buyerColumns}
-                dataSource={kpi.topBuyers}
-                rowKey="name"
-                size="small"
-                pagination={false}
-                bordered
-              />
+            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-5">
+              <p className="text-sm font-medium text-emerald-900">Total Tax Amount</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-700">
+                ₹ {numberFormatting(graphData?.totalValue?.totalScrapSalesValue || 0)}
+              </p>
             </div>
           </div>
-        </>
-      )}
+
+          {/* Rate/Kg Analysis */}
+          <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Total Scrap Sale Quantity</h3>
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-5">
+              <p className="text-sm font-medium text-emerald-900">Total Scrap Sale Quantity (KG)</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-700">
+                {numberFormatting(graphData?.totalQuantity?.totalScrapSaleQuantity || 0)}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-card rounded-xl p-5 shadow-card border border-border flex flex-col">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Scrap Category Distribution (KG)</h3>
+            <div className="flex flex-1 items-center justify-center">
+              <div className="w-full max-w-[420px] space-y-4">
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={graphData?.categoryDistribution}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={72}
+                        outerRadius={108}
+                        paddingAngle={isSingleCategoryDistribution ? 0 : 1.5}
+                        cornerRadius={isSingleCategoryDistribution ? 0 : 6}
+                        startAngle={90}
+                        endAngle={-270}
+                        stroke="#FFFFFF"
+                        strokeWidth={2}
+                        labelLine={false}
+                      >
+                        {graphData?.categoryDistribution?.map((item) => (
+                          <Cell key={item.name} fill={item.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        formatter={(value: number) => [`${numberFormatting(value)} KG`, 'Quantity']}
+                      />
+                      <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" className="fill-slate-900 text-[18px] font-semibold">
+                        {numberFormatting(graphData?.categoryDistribution?.reduce((sum, item) => sum + item.value, 0) || 0)}
+                      </text>
+                      <text x="50%" y="60%" textAnchor="middle" dominantBaseline="middle" className="fill-slate-500 text-[11px] font-medium">
+                        KG
+                      </text>
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        layout="horizontal"
+                        iconType="circle"
+                        formatter={(value) => {
+                          const item = graphData?.categoryDistribution?.find((category) => category.name === value);
+                          return `${value.replace(' Scrap', '')} ${item ? `${item.percentage}%` : ''}`;
+                        }}
+                        wrapperStyle={{
+                          paddingTop: '12px',
+                          fontSize: '12px',
+                          color: '#475569',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Top Buyers */}
+          <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Top Buyers</h3>
+            <Table
+              columns={buyerColumns}
+              dataSource={graphData?.topBuyers?.list || []}
+              rowKey="buyerName"
+              size="small"
+              loading={topBuyersLoading}
+              pagination={{
+                current: graphData.topBuyers.pageNo,
+                total: graphData.topBuyers.fullCount,
+                pageSize: DEFAULT_PAGE_SIZE,
+                hideOnSinglePage: true,
+                showSizeChanger: false,
+                onChange: (page) => {
+                  void loadTopBuyers(page);
+                },
+              }}
+              bordered
+            />
+          </div>
+
+          {/* <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Market Benchmarking</h3>
+
+          </div> */}
+        </div>
+      </>
+      {/* )} */}
 
       {/* Invoice Detail Modal */}
-      <Modal
+      {/* <Modal
         title={
           'Invoice: ' + (selectedInvoice?.invoiceNumber || '-')
         }
@@ -396,15 +668,16 @@ const ScrapSalesSummary = () => {
         {selectedInvoice && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+              <div><strong>Invoice Number:</strong> {selectedInvoice.invoiceNumber || '-'}</div>
               <div><strong>Date:</strong> {selectedInvoice.invoiceDate || '-'}</div>
               <div><strong>Delivery Note:</strong> {selectedInvoice.deliveryNote || '-'}</div>
               <div><strong>e-Way Bill:</strong> {selectedInvoice.ewayBillNumber || '-'}</div>
               <div><strong>Buyer's Order:</strong> {selectedInvoice.buyersOrderNumber || '-'}</div>
-              <div><strong>Consignee:</strong> {selectedInvoice.consignee || '-'}</div>
-              <div><strong>Buyer:</strong> {selectedInvoice.buyer || '-'}</div>
+              <div><strong>Ship To:</strong> {selectedInvoice.shipTo || '-'}</div>
+              <div><strong>Bill To:</strong> {selectedInvoice.billTo || '-'}</div>
               <div><strong>Dispatched Via:</strong> {selectedInvoice.dispatchedThrough || '-'}</div>
               <div><strong>Vehicle No:</strong> {selectedInvoice.vehicleNumber || '-'}</div>
-              <div><strong>PAN:</strong> {selectedInvoice.pan || '-'}</div>
+              <div><strong>PAN:</strong> {selectedInvoice.companyPan || '-'}</div>
               <div><strong>GST No:</strong> {selectedInvoice.gstNumber || '-'}</div>
             </div>
 
@@ -412,7 +685,8 @@ const ScrapSalesSummary = () => {
             <h4 className="font-semibold">Line Items</h4>
             <Table
               columns={lineItemColumns}
-              dataSource={selectedInvoice.lineItems}
+              dataSource={[selectedInvoice]}
+              rowKey="key"
               pagination={false}
               size="small"
               bordered
@@ -421,24 +695,24 @@ const ScrapSalesSummary = () => {
             <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
               <div>
                 <strong>Taxable Value:</strong>{' '}
-                <Tag color="blue">₹ {selectedInvoice.taxableValue?.toLocaleString('en-IN')}</Tag>
+                <Tag color="blue">₹ {toNumber(selectedInvoice.taxableValue).toLocaleString('en-IN')}</Tag>
               </div>
               <div>
                 <strong>IGST:</strong>{' '}
                 <Tag color="orange">
-                  {selectedInvoice.igstRate
-                    ? selectedInvoice.igstRate + '% - ₹ ' + selectedInvoice.igstAmount?.toLocaleString('en-IN')
+                  {selectedInvoice.igstRateAmount
+                    ? `₹ ${toNumber(selectedInvoice.igstRateAmount).toLocaleString('en-IN')}`
                     : '-'}
                 </Tag>
               </div>
               <div>
                 <strong>Total Tax:</strong>{' '}
-                <Tag color="red">₹ {selectedInvoice.totalTaxAmount?.toLocaleString('en-IN')}</Tag>
+                <Tag color="red">₹ {toNumber(selectedInvoice.totalTaxAmount).toLocaleString('en-IN')}</Tag>
               </div>
             </div>
           </div>
         )}
-      </Modal>
+      </Modal> */}
     </div>
   );
 };

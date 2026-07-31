@@ -205,7 +205,7 @@ const Dashboard = () => {
           RVSFs Overview
         </span>
       ),
-      children: <RVSFTab isLoading={isLoading} filters={filters} />,
+      children: <RVSFTab isLoading={isLoading} filters={filters} materialOptions={materialOptions.list ?? []} />,
     },
     {
       key: 'recyclers',

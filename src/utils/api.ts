@@ -96,7 +96,7 @@ export const uploadFile = async (file: File): Promise<string | null> => {
   formData.append('file', file);
 
   const response = await post<FileUploadResponse, FormData>(
-    `${API_ROUTES.FILE_UPLOAD}?source=USER`,
+    `${API_ROUTES.FILE_UPLOAD}?source=OCR`,
     formData,
     { 'Content-Type': 'multipart/form-data' },
   );

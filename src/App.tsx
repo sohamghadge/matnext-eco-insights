@@ -18,7 +18,7 @@ const App = () => {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // if (event.origin !== "http://localhost:3000") {
-        if (event.origin !== "https://stg-matnext-in-uat.genbanext.com") {
+      if (event.origin !== "https://stg-matnext-in-uat.genbanext.com") {
         return;
       }
 

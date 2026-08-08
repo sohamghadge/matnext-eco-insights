@@ -20,7 +20,20 @@ export type ScrapSalesAverageRateParams = {
   materialType: string;
 };
 
+export type topBuyersRateParams = {
+  fromDate: string;
+  toDate: string;
+  materialType: string;
+  pageSize: number
+};
+
 export type ScrapSalesMetricsParams = ScrapSalesAverageRateParams;
+
+export type InvoiceDetailsListParams = {
+  fromDate: string;
+  toDate: string;
+  pageSize?: number;
+};
 
 type ScrapSalesAverageRateResponse<T = unknown> = ApiResponse<T>;
 type ScrapSalesTotalQuantityResponse<T = unknown> = ApiResponse<T>;
@@ -110,9 +123,14 @@ export const getOcrData = async <T = unknown>(payload: OcrPayload): Promise<T | 
 
 export const getInvoiceDetailsList = async (
   pageNo: number,
+  params: InvoiceDetailsListParams,
 ): Promise<InvoiceDetailsListData | null> => {
   const response = await get<InvoiceDetailsListResponse | ApiResponse<InvoiceDetailsListData>>(
     API_ROUTES.INVOICE_DETAILS(pageNo),
+    {
+      ...params,
+      pageSize: params.pageSize ?? 5,
+    },
   );
 
   if ('success' in response) {
@@ -168,7 +186,7 @@ export const getScrapSalesCategoryDistribution = async <T = unknown>(
 
 export const getScrapSalesTopBuyers = async <T = unknown>(
   pageNo: number,
-  params: ScrapSalesMetricsParams,
+  params: topBuyersRateParams,
 ): Promise<T | null> => {
   const response = await get<ScrapSalesTopBuyersResponse<T>>(
     API_ROUTES.SCRAP_SALES_TOP_BUYERS(pageNo),

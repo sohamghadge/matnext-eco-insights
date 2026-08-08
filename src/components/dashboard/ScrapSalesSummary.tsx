@@ -1,7 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Upload, Table, Button, Modal, Divider, Tag, message } from 'antd';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Upload, Table, Button, Modal, Divider, Tag, message, DatePicker } from 'antd';
 import type { TableColumnsType } from 'antd';
+import type { RcFile } from 'antd/es/upload';
 import { InboxOutlined, EyeOutlined } from '@ant-design/icons';
+import type { Dayjs } from 'dayjs';
 import {
   LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -16,10 +18,11 @@ import {
   getScrapSalesTotalQuantity,
   getScrapSalesTotalValue,
   getScrapSalesTopBuyers,
+  type InvoiceDetailsListParams,
   type ScrapSalesMetricsParams,
   type InvoiceDetailsListItem,
 } from '@/utils/api';
-import { formatDateToDDMMYYYY } from '@/utils/dayjs';
+import { dayJs, formatDateToDDMMYYYY } from '@/utils/dayjs';
 import type { FilterState } from '@/data/dashboardData';
 import type { TagItem } from '@/services/dashboardApi';
 import { categoryDistributionColors, materialTypesList, numberFormatting } from './dashboard.description';
@@ -29,6 +32,7 @@ const { Dragger } = Upload;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const DEFAULT_PAGE_SIZE = 5;
 const SCRAP_RATE_LINE_COLOR = '#20A35A';
+const SECTION_DATE_FORMAT = 'YYYY/MM/DD';
 
 interface InvoiceHistoryRow extends InvoiceDetailsListItem {
   key: string;
@@ -120,6 +124,14 @@ const INITIAL_GRAPH_DATA: ScrapSalesGraphData = {
   },
 };
 
+const INITIAL_TOP_BUYERS_DATA: TopBuyersGraphData = {
+  list: [],
+  pageNo: 1,
+  fullCount: 0,
+  lastPage: 0,
+  hasMore: false,
+};
+
 const toNumber = (value: string | number | null | undefined) => {
   if (value === null || value === undefined || value === '') return 0;
 
@@ -139,32 +151,75 @@ const getField = <T,>(
 
 const buildScrapSalesMetricsPayload = (
   filters: FilterState,
+  dateFrom: Date | null,
+  dateTo: Date | null,
   materialOptions: TagItem[],
 ): ScrapSalesMetricsParams => {
-  const selectedMaterials = materialOptions?.filter(v => filters?.materials?.includes(v?.id))?.map(v => v?.name)?.map(v => materialTypesList?.[v] || 'OTHER')
-  const materialTypes = [...new Set(selectedMaterials)]
+  const selectedMaterials = materialOptions?.filter(v => filters?.materials?.includes(v?.id))?.map(v => v?.name)?.map(v => materialTypesList?.[v] || 'OTHER');
+  const materialTypes = [...new Set(selectedMaterials)];
   return {
-    fromDate: formatDateToDDMMYYYY(filters.dateFrom) ?? '',
-    toDate: formatDateToDDMMYYYY(filters.dateTo) ?? '',
-    materialType: materialTypes.join(',')
+    fromDate: formatDateToDDMMYYYY(dateFrom) ?? '',
+    toDate: formatDateToDDMMYYYY(dateTo) ?? '',
+    materialType: materialTypes.join(','),
   };
 };
 
 const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryProps) => {
   const [invoices, setInvoices] = useState<InvoiceHistoryRow[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [refreshingDashboard, setRefreshingDashboard] = useState(false);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceHistoryRow | null>(null);
   const [invoicePage, setInvoicePage] = useState(1);
   const [paginationTotal, setPaginationTotal] = useState(0);
-  const [graphData, setGraphData] = useState<ScrapSalesGraphData>(INITIAL_GRAPH_DATA)
+  const [graphData, setGraphData] = useState<ScrapSalesGraphData>(INITIAL_GRAPH_DATA);
+  const [topBuyersData, setTopBuyersData] = useState<TopBuyersGraphData>(INITIAL_TOP_BUYERS_DATA);
   const [topBuyersLoading, setTopBuyersLoading] = useState(false);
+  const [invoiceDateFrom, setInvoiceDateFrom] = useState<Date | null>(filters.dateFrom);
+  const [invoiceDateTo, setInvoiceDateTo] = useState<Date | null>(filters.dateTo);
+  const uploadBatchInProgress = useRef(false);
   // const [modalOpen, setModalOpen] = useState(false);
 
+  useEffect(() => {
+    setInvoiceDateFrom(filters.dateFrom);
+  }, [filters.dateFrom]);
+
+  useEffect(() => {
+    setInvoiceDateTo(filters.dateTo);
+  }, [filters.dateTo]);
+
+  const invoiceParams = useMemo<InvoiceDetailsListParams | null>(() => {
+    const fromDate = formatDateToDDMMYYYY(invoiceDateFrom);
+    const toDate = formatDateToDDMMYYYY(invoiceDateTo);
+
+    if (!fromDate || !toDate) return null;
+
+    return {
+      fromDate,
+      toDate,
+      pageSize: DEFAULT_PAGE_SIZE,
+    };
+  }, [invoiceDateFrom, invoiceDateTo]);
+
+  const scrapSalesMetricsPayload = useMemo<ScrapSalesMetricsParams | null>(() => {
+    const payload = buildScrapSalesMetricsPayload(
+      filters,
+      invoiceDateFrom,
+      invoiceDateTo,
+      materialOptions,
+    );
+
+    if (!payload.fromDate || !payload.toDate) return null;
+
+    return payload;
+  }, [filters, invoiceDateFrom, invoiceDateTo, materialOptions]);
+
   const loadInvoiceHistory = useCallback(async (pageNo: number) => {
+    if (!invoiceParams) return false;
+
     setInvoiceLoading(true);
     try {
-      const invoiceDetails = await getInvoiceDetailsList(pageNo);
+      const invoiceDetails = await getInvoiceDetailsList(pageNo, invoiceParams);
       if (!invoiceDetails) {
         message.error('Failed to load invoice history');
         return false;
@@ -184,20 +239,29 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     } finally {
       setInvoiceLoading(false);
     }
-  }, []);
+  }, [invoiceParams]);
 
   useEffect(() => {
+    if (!invoiceParams) {
+      setInvoices([]);
+      setInvoicePage(1);
+      setPaginationTotal(0);
+      return;
+    }
+
     void loadInvoiceHistory(1);
-  }, [loadInvoiceHistory]);
+  }, [invoiceParams, loadInvoiceHistory]);
 
   const loadTopBuyers = useCallback(async (pageNo: number) => {
-    if (!filters.dateFrom || !filters.dateTo || !filters.materials.length) return false;
+    if (!scrapSalesMetricsPayload || !filters.materials.length) {
+      setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
+      return false;
+    }
 
     setTopBuyersLoading(true);
     try {
-      const payload = buildScrapSalesMetricsPayload(filters, materialOptions);
-      const topBuyers = await getScrapSalesTopBuyers<TopBuyersApiResponse>(pageNo, payload);
-      const topBuyersData: TopBuyersGraphData = {
+      const topBuyers = await getScrapSalesTopBuyers<TopBuyersApiResponse>(pageNo, { ...scrapSalesMetricsPayload, pageSize: 5 });
+      const nextTopBuyersData: TopBuyersGraphData = {
         list: topBuyers?.list ?? [],
         pageNo: topBuyers?.pageNo ?? pageNo,
         fullCount: topBuyers?.fullCount ?? 0,
@@ -205,59 +269,70 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
         hasMore: topBuyers?.hasMore ?? false,
       };
 
-      setGraphData((prev) => ({
-        ...prev,
-        topBuyers: topBuyersData,
-      }));
+      setTopBuyersData(nextTopBuyersData);
 
       return true;
     } catch (error) {
       console.error('Top Buyers API error:', error);
+      setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
       return false;
     } finally {
       setTopBuyersLoading(false);
     }
-  }, [filters, materialOptions]);
+  }, [filters.materials.length, scrapSalesMetricsPayload]);
+
+  const loadScrapSalesMetrics = useCallback(async () => {
+    if (!scrapSalesMetricsPayload || !filters.materials.length) {
+      setGraphData(INITIAL_GRAPH_DATA);
+      setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
+      return false;
+    }
+
+    try {
+      const [
+        averageRate,
+        totalQuantity,
+        totalValue,
+        categoryDistribution,
+      ] = await Promise.all([
+        getScrapSalesAverageRate(scrapSalesMetricsPayload),
+        getScrapSalesTotalQuantity(scrapSalesMetricsPayload),
+        getScrapSalesTotalValue(scrapSalesMetricsPayload),
+        getScrapSalesCategoryDistribution<CategoryDistributionApiResponse>(scrapSalesMetricsPayload),
+        loadTopBuyers(1),
+      ]);
+
+      const categoryDistributionList: CategoryDistributionItem[] = categoryDistribution?.list?.map(v => ({
+        name: v?.category,
+        value: toNumber(v?.quantity),
+        percentage: v?.percentage,
+        color: categoryDistributionColors?.[v?.category],
+      })) ?? [];
+
+      setGraphData((prev) => ({
+        ...prev,
+        averageRate: averageRate ?? {},
+        totalQuantity: totalQuantity ?? {},
+        totalValue: totalValue ?? {},
+        categoryDistribution: categoryDistributionList,
+      }));
+
+      return true;
+    } catch (error) {
+      console.error('Scrap Sales metrics API error:', error);
+      return false;
+    }
+  }, [filters.materials.length, loadTopBuyers, scrapSalesMetricsPayload]);
 
   useEffect(() => {
-    const loadScrapSalesMetrics = async () => {
-      try {
-        const payload = buildScrapSalesMetricsPayload(filters, materialOptions);
-        const [
-          averageRate,
-          totalQuantity,
-          totalValue,
-          categoryDistribution,
-        ] = await Promise.all([
-          getScrapSalesAverageRate(payload),
-          getScrapSalesTotalQuantity(payload),
-          getScrapSalesTotalValue(payload),
-          getScrapSalesCategoryDistribution<CategoryDistributionApiResponse>(payload),
-          loadTopBuyers(1),
-        ]);
-        const categoryDistributionList: CategoryDistributionItem[] = categoryDistribution?.list?.map(v => ({
-          name: v?.category,
-          value: toNumber(v?.quantity),
-          percentage: v?.percentage,
-          color: categoryDistributionColors?.[v?.category],
-        })) ?? [];
-        setGraphData((prev) => ({
-          ...prev,
-          averageRate: averageRate ?? {},
-          totalQuantity: totalQuantity ?? {},
-          totalValue: totalValue ?? {},
-          categoryDistribution: categoryDistributionList,
-        }))
-
-      } catch (error) {
-        console.error('Scrap Sales metrics API error:', error);
-      }
-    };
-
-    if (!filters.dateFrom || !filters.dateTo || !filters.materials.length) return;
-
     void loadScrapSalesMetrics();
-  }, [filters.dateFrom, filters.dateTo, filters.materials, materialOptions, loadTopBuyers]);
+  }, [loadScrapSalesMetrics]);
+
+  useEffect(() => {
+    if (!scrapSalesMetricsPayload || !filters.materials.length) {
+      setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
+    }
+  }, [filters.materials.length, scrapSalesMetricsPayload]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
@@ -272,38 +347,81 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     // setModalOpen(false);
   }, [invoices, selectedInvoice]);
 
-  const handleUpload = useCallback(async (file: File) => {
-    if (file.size > MAX_FILE_SIZE) {
-      message.warning('File size must be less than 5MB');
-      return false;
+  const processInvoice = useCallback(async (file: File) => {
+    const dmsId = await uploadFile(file);
+    if (!dmsId) {
+      throw new Error('File upload failed');
     }
 
+    const ocrData = await getOcrData({
+      jobType: 'RECOVERY',
+      source: 'SCRAP_INVOICE',
+      dmsId,
+    });
+    if (!ocrData) {
+      throw new Error('Failed to process invoice');
+    }
+
+    return ocrData;
+  }, []);
+
+  const processInvoiceBatch = useCallback(async (files: RcFile[]) => {
+    uploadBatchInProgress.current = true;
     setUploading(true);
+
     try {
-      const dmsId = await uploadFile(file);
-      if (!dmsId) {
-        message.error('File upload failed');
-        return false;
+      const results = await Promise.allSettled(files.map(processInvoice));
+      const failures = results.filter((result) => result.status === 'rejected');
+
+      if (failures.length > 0) {
+        failures.forEach((failure) => {
+          const errorMessage = failure.reason instanceof Error
+            ? failure.reason.message
+            : 'Failed to process invoice';
+          message.error(errorMessage);
+        });
+        return;
       }
 
-      const ocrData = await getOcrData({
-        jobType: 'RECOVERY',
-        source: 'SCRAP_INVOICE',
-        dmsId,
-      });
-      if (!ocrData) {
-        message.error('Failed to process invoice');
-        return false;
-      }
-      message.success('Invoice processed successfully');
-      await loadInvoiceHistory(1);
+      message.success(files.length === 1
+        ? 'Invoice processed successfully'
+        : `${files.length} invoices processed successfully`);
+
+      setUploading(false);
+      setRefreshingDashboard(true);
+      await Promise.all([
+        loadInvoiceHistory(1),
+        loadScrapSalesMetrics(),
+      ]);
     } catch {
       message.error('Failed to process invoice');
     } finally {
       setUploading(false);
+      setRefreshingDashboard(false);
+      uploadBatchInProgress.current = false;
     }
-    return false;
-  }, [loadInvoiceHistory]);
+  }, [loadInvoiceHistory, loadScrapSalesMetrics, processInvoice]);
+
+  const handleBeforeUpload = useCallback((file: RcFile, fileList: RcFile[]) => {
+    // Ant Design invokes beforeUpload once per file. The first invocation owns
+    // the complete selection and coordinates it as one batch.
+    if (file.uid !== fileList[0]?.uid || uploadBatchInProgress.current) {
+      return Upload.LIST_IGNORE;
+    }
+
+    const validFiles = fileList.filter((invoice) => {
+      if (invoice.size <= MAX_FILE_SIZE) return true;
+
+      message.warning(`${invoice.name}: File size must be less than 5MB`);
+      return false;
+    });
+
+    if (validFiles.length > 0) {
+      void processInvoiceBatch(validFiles);
+    }
+
+    return Upload.LIST_IGNORE;
+  }, [processInvoiceBatch]);
 
   const invoiceColumns: TableColumnsType<InvoiceHistoryRow> = [
     { title: 'ID', dataIndex: 'id', key: 'id', render: (t: number | null) => t ?? '-' },
@@ -388,23 +506,65 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   ];
 
   const isSingleCategoryDistribution = graphData?.categoryDistribution?.length === 1;
+  const handleInvoiceDateChange = (key: 'from' | 'to', value: Dayjs | null) => {
+    const nextDate = value ? value.toDate() : null;
+
+    if (key === 'from') {
+      setInvoiceDateFrom(nextDate);
+      return;
+    }
+
+    setInvoiceDateTo(nextDate);
+  };
 
   return (
     <div className="space-y-6 min-w-0">
       {/* Upload Section */}
       <div className="bg-card rounded-xl p-5 shadow-card border border-border overflow-hidden">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Scrap Sales Summary - Invoice Upload</h3>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h3 className="min-w-0 text-lg font-semibold text-foreground">Scrap Sales Summary - Invoice Upload</h3>
+          <div className="flex shrink-0 items-end gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">
+                Date From
+              </label>
+              <DatePicker
+                value={invoiceDateFrom ? dayJs(invoiceDateFrom) : null}
+                onChange={(date) => handleInvoiceDateChange('from', date)}
+                format={SECTION_DATE_FORMAT}
+                style={{ width: 140 }}
+                allowClear={false}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">
+                Date To
+              </label>
+              <DatePicker
+                value={invoiceDateTo ? dayJs(invoiceDateTo) : null}
+                onChange={(date) => handleInvoiceDateChange('to', date)}
+                format={SECTION_DATE_FORMAT}
+                style={{ width: 140 }}
+                allowClear={false}
+              />
+            </div>
+          </div>
+        </div>
         <Dragger
           name="file"
           multiple
           accept=".pdf,.jpg,.jpeg,.png"
           showUploadList={false}
-          beforeUpload={handleUpload}
-          disabled={uploading}
+          beforeUpload={handleBeforeUpload}
+          disabled={uploading || refreshingDashboard}
         >
           <p className="ant-upload-drag-icon"><InboxOutlined /></p>
           <p className="ant-upload-text">
-            {uploading ? 'Processing...' : 'Click or drag scrap sales invoices (PDF, JPG, PNG)'}
+            {uploading
+              ? 'Processing invoices...'
+              : refreshingDashboard
+                ? 'Refreshing dashboard...'
+                : 'Click or drag scrap sales invoices (PDF, JPG, PNG)'}
           </p>
         </Dragger>
 
@@ -629,13 +789,13 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
             <h3 className="text-lg font-semibold text-foreground mb-4">Top Buyers</h3>
             <Table
               columns={buyerColumns}
-              dataSource={graphData?.topBuyers?.list || []}
+              dataSource={topBuyersData.list}
               rowKey="buyerName"
               size="small"
               loading={topBuyersLoading}
               pagination={{
-                current: graphData.topBuyers.pageNo,
-                total: graphData.topBuyers.fullCount,
+                current: topBuyersData.pageNo,
+                total: topBuyersData.fullCount,
                 pageSize: DEFAULT_PAGE_SIZE,
                 hideOnSinglePage: true,
                 showSizeChanger: false,

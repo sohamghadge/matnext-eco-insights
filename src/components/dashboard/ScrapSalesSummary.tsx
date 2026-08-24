@@ -468,6 +468,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     { title: 'Taxable Value', dataIndex: 'taxableValue', key: 'taxableValue', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
     { title: 'IGST Rate Amount', dataIndex: 'igstRateAmount', key: 'igstRateAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
     { title: 'Total Tax Amount', dataIndex: 'totalTaxAmount', key: 'totalTaxAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
+    { title: 'Total Amount', dataIndex: 'totalValue', key: 'totalValue', render: (t: number | string | null | undefined) => t != null ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
     { title: 'Company PAN', dataIndex: 'companyPan', key: 'companyPan', render: (t: string) => t || '-' },
     { title: 'Vehicle Number', dataIndex: 'vehicleNumber', key: 'vehicleNumber', render: (t: string) => t || '-' },
     { title: 'GST Number', dataIndex: 'gstNumber', key: 'gstNumber', render: (t: string) => t || '-' },

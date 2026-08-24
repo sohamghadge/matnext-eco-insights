@@ -66,6 +66,7 @@ export interface InvoiceDetailsListItem {
   taxableValue?: number | string | null;
   igstRateAmount?: number | string | null;
   totalTaxAmount?: number | string | null;
+  totalValue?: number | string | null;
   companyPan?: string | null;
   vehicleNumber?: string | null;
   gstNumber?: string | null;

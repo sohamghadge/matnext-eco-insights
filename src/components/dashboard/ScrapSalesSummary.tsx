@@ -82,6 +82,7 @@ type TopBuyersGraphData = {
   fullCount: number;
   lastPage: number;
   hasMore: boolean;
+  requestToken?: symbol;
 };
 
 type CategoryDistributionApiItem = {
@@ -174,7 +175,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   const [paginationTotal, setPaginationTotal] = useState(0);
   const [graphData, setGraphData] = useState<ScrapSalesGraphData>(INITIAL_GRAPH_DATA);
   const [topBuyersData, setTopBuyersData] = useState<TopBuyersGraphData>(INITIAL_TOP_BUYERS_DATA);
-  const [topBuyersLoading, setTopBuyersLoading] = useState(false);
+  const topBuyersLoading = Boolean(topBuyersData.requestToken);
   const [invoiceDateFrom, setInvoiceDateFrom] = useState<Date | null>(filters.dateFrom);
   const [invoiceDateTo, setInvoiceDateTo] = useState<Date | null>(filters.dateTo);
   const uploadBatchInProgress = useRef(false);
@@ -253,12 +254,14 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   }, [invoiceParams, loadInvoiceHistory]);
 
   const loadTopBuyers = useCallback(async (pageNo: number) => {
+    const requestToken = Symbol('topBuyersRequest');
+
     if (!scrapSalesMetricsPayload || !filters.materials.length) {
       setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
       return false;
     }
 
-    setTopBuyersLoading(true);
+    setTopBuyersData({ ...INITIAL_TOP_BUYERS_DATA, pageNo, requestToken });
     try {
       const topBuyers = await getScrapSalesTopBuyers<TopBuyersApiResponse>(pageNo, { ...scrapSalesMetricsPayload, pageSize: 5 });
       const nextTopBuyersData: TopBuyersGraphData = {
@@ -269,15 +272,17 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
         hasMore: topBuyers?.hasMore ?? false,
       };
 
-      setTopBuyersData(nextTopBuyersData);
+      setTopBuyersData(currentData => (
+        currentData.requestToken === requestToken ? nextTopBuyersData : currentData
+      ));
 
       return true;
     } catch (error) {
       console.error('Top Buyers API error:', error);
-      setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
+      setTopBuyersData(currentData => (
+        currentData.requestToken === requestToken ? INITIAL_TOP_BUYERS_DATA : currentData
+      ));
       return false;
-    } finally {
-      setTopBuyersLoading(false);
     }
   }, [filters.materials.length, scrapSalesMetricsPayload]);
 

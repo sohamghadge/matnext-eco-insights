@@ -26,6 +26,7 @@ import { dayJs, formatDateToDDMMYYYY } from '@/utils/dayjs';
 import type { FilterState } from '@/data/dashboardData';
 import type { TagItem } from '@/services/dashboardApi';
 import { categoryDistributionColors, materialTypesList, numberFormatting } from './dashboard.description';
+import DispatchInvoiceDetails from './DispatchInvoiceDetails';
 
 const { Dragger } = Upload;
 
@@ -530,7 +531,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
         <div className="mb-4 flex items-start justify-between gap-4">
           <h3 className="min-w-0 text-lg font-semibold text-foreground">Scrap Sales Summary - Invoice Upload</h3>
           <div className="flex shrink-0 items-end gap-3">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">
                 Date From
               </label>
@@ -542,7 +543,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
                 allowClear={false}
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">
                 Date To
               </label>
@@ -573,6 +574,8 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
                 : 'Click or drag scrap sales invoices (PDF, JPG, PNG)'}
           </p>
         </Dragger>
+
+        <DispatchInvoiceDetails materialOptions={materialOptions} sourceData={invoices.length ? invoices?.slice(0, 3) : []} />
 
         <div className="mt-6 min-w-0">
           <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>

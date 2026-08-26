@@ -13,6 +13,7 @@ import dayjs from 'dayjs';
 import InteractiveIndiaMap from '../InteractiveIndiaMap';
 import AIInsightsWidget from '../AIInsightsWidget';
 import ScrapSalesSummary from '../ScrapSalesSummary';
+import DispatchInvoiceDetails from '../DispatchInvoiceDetails';
 import {
   FilterState,
   rvsfFilterOptions,
@@ -508,6 +509,8 @@ const RVSFTab = ({ isLoading, filters, materialOptions = [] }: RVSFTabProps) => 
           </div>
         </ExpandableWidget>
       </div>
+
+      {/* <DispatchInvoiceDetails materialOptions={materialOptions} /> */}
 
       {/* Scrap Sales Summary - Invoice Upload & OCR */}
       <ScrapSalesSummary filters={filters} materialOptions={materialOptions} />

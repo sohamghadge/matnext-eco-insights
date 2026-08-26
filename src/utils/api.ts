@@ -35,6 +35,29 @@ export type InvoiceDetailsListParams = {
   pageSize?: number;
 };
 
+export type DispatchInvoiceDetailsParams = InvoiceDetailsListParams & {
+  materialType?: string;
+};
+
+export interface DispatchInvoiceDetailsItem {
+  id?: number | null;
+  invoiceNumber?: string | null;
+  invoiceDate?: string | null;
+  quantity?: number | string | null;
+  amount?: number | string | null;
+  additionalExpense?: number | string | null;
+  finalAmount?: number | string | null;
+  ratePerKg?: number | string | null;
+}
+
+export interface DispatchInvoiceDetailsData {
+  list: DispatchInvoiceDetailsItem[];
+  pageNo: number;
+  hasMore: boolean;
+  lastPage: number;
+  fullCount: number;
+}
+
 type ScrapSalesAverageRateResponse<T = unknown> = ApiResponse<T>;
 type ScrapSalesTotalQuantityResponse<T = unknown> = ApiResponse<T>;
 type ScrapSalesTotalValueResponse<T = unknown> = ApiResponse<T>;
@@ -105,6 +128,11 @@ type InvoiceDetailsListResponse = {
   data: InvoiceDetailsListData | null;
 };
 
+type DispatchInvoiceDetailsResponse = {
+  error: string | null;
+  data: DispatchInvoiceDetailsData | null;
+};
+
 export const uploadFile = async (file: File): Promise<string | null> => {
   const formData = new FormData();
   formData.append('file', file);
@@ -128,6 +156,25 @@ export const getInvoiceDetailsList = async (
 ): Promise<InvoiceDetailsListData | null> => {
   const response = await get<InvoiceDetailsListResponse | ApiResponse<InvoiceDetailsListData>>(
     API_ROUTES.INVOICE_DETAILS(pageNo),
+    {
+      ...params,
+      pageSize: params.pageSize ?? 5,
+    },
+  );
+
+  if ('success' in response) {
+    return response.success ? response.data ?? null : null;
+  }
+
+  return response.error ? null : response.data ?? null;
+};
+
+export const getDispatchInvoiceDetails = async (
+  pageNo: number,
+  params: DispatchInvoiceDetailsParams,
+): Promise<DispatchInvoiceDetailsData | null> => {
+  const response = await get<DispatchInvoiceDetailsResponse | ApiResponse<DispatchInvoiceDetailsData>>(
+    API_ROUTES.DISPATCH_INVOICE_DETAILS(pageNo),
     {
       ...params,
       pageSize: params.pageSize ?? 5,

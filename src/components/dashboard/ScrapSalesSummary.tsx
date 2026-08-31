@@ -141,6 +141,20 @@ const toNumber = (value: string | number | null | undefined) => {
   return Number.isNaN(parsedValue) ? 0 : parsedValue;
 };
 
+const getCommonStartingText = (values: string[]) => {
+  if (values.length === 0) return '';
+
+  const wordLists = values.map(value => value.trim().split(/\s+/));
+  const commonWords: string[] = [];
+
+  for (const [index, word] of wordLists[0].entries()) {
+    if (!wordLists.every(words => words[index] === word)) break;
+    commonWords.push(word);
+  }
+
+  return commonWords.join(' ');
+};
+
 const getField = <T,>(
   camelCaseValue: T | null | undefined,
   snakeCaseValue: T | null | undefined,
@@ -465,7 +479,35 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     },
     { title: 'Dispatched Through', dataIndex: 'dispatchedThrough', key: 'dispatchedThrough', render: (t: string) => t || '-' },
     { title: 'Scrap Item Category', dataIndex: 'scrapItemCategory', key: 'scrapItemCategory', render: (t: string) => t || '-' },
-    { title: 'Material Description', dataIndex: 'materialDescription', key: 'materialDescription', render: (t: string) => t || '-' },
+    {
+      title: 'Material Description',
+      dataIndex: 'materialDescription',
+      key: 'materialDescription',
+      render: (value: string | string[] | null | undefined) => {
+        if (!value || (Array.isArray(value) && value.length === 0)) return '-';
+
+        if (!Array.isArray(value)) return value;
+
+        const commonStartingText = getCommonStartingText(value);
+
+        return (
+          <div className="whitespace-normal break-words">
+            {value.map((description, index) => {
+              const remainingText = description
+                .slice(commonStartingText.length)
+                .trim();
+
+              return (
+                <div key={`${description}-${index}`}>
+                  {commonStartingText && <strong>{commonStartingText}</strong>}
+                  <div style={{ marginLeft: '8px' }}>{remainingText && ` (${remainingText})`}</div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      },
+    },
     { title: 'HSN/SAC', dataIndex: 'hsnSac', key: 'hsnSac', render: (t: string) => t || '-' },
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', render: (t: number | string | null | undefined) => t ? toNumber(t).toLocaleString('en-IN') : '-' },
     { title: 'Unit Of Measurement', dataIndex: 'unitOfMeasurement', key: 'unitOfMeasurement', render: (t: string) => t || '-' },

@@ -80,7 +80,7 @@ export interface InvoiceDetailsListItem {
   billTo?: string | null;
   dispatchedThrough?: string | null;
   scrapItemCategory?: string | null;
-  materialDescription?: string | null;
+  materialDescription?: string | string[] | null;
   hsnSac?: string | null;
   quantity?: number | string | null;
   unitOfMeasurement?: string | null;

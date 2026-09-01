@@ -46,6 +46,12 @@ const formatNumber = (value: number | string | null | undefined, currency = fals
 const columns: TableColumnsType<DispatchInvoiceRow> = [
   { title: 'Invoice No.', dataIndex: 'invoiceNumber', key: 'invoiceNumber', render: (value: string | null) => value || '-' },
   { title: 'Invoice Date', dataIndex: 'invoiceDate', key: 'invoiceDate', render: (value: string | null) => value || '-' },
+  {
+    title: 'Material Description',
+    dataIndex: 'materialDescription',
+    key: 'materialDescription',
+    render: (value: string | null | undefined) => value || '-',
+  },
   { title: 'Qty (Kg)', dataIndex: 'quantity', key: 'quantity', align: 'right', render: (value) => formatNumber(value) },
   { title: 'Amount', dataIndex: 'grossAmount', key: 'amount', align: 'right', render: (value) => formatNumber(value, true) },
   { title: 'Addnl Exp', dataIndex: 'taxableValue', key: 'additionalExpense', align: 'right', render: (value) => formatNumber(value, true) },

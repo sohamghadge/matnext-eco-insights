@@ -43,6 +43,7 @@ export interface DispatchInvoiceDetailsItem {
   id?: number | null;
   invoiceNumber?: string | null;
   invoiceDate?: string | null;
+  materialDescription?: string | string[] | null;
   quantity?: number | string | null;
   amount?: number | string | null;
   additionalExpense?: number | string | null;

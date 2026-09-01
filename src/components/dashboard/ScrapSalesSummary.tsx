@@ -141,19 +141,19 @@ const toNumber = (value: string | number | null | undefined) => {
   return Number.isNaN(parsedValue) ? 0 : parsedValue;
 };
 
-const getCommonStartingText = (values: string[]) => {
-  if (values.length === 0) return '';
+// const getCommonStartingText = (values: string[]) => {
+//   if (values.length === 0) return '';
 
-  const wordLists = values.map(value => value.trim().split(/\s+/));
-  const commonWords: string[] = [];
+//   const wordLists = values.map(value => value.trim().split(/\s+/));
+//   const commonWords: string[] = [];
 
-  for (const [index, word] of wordLists[0].entries()) {
-    if (!wordLists.every(words => words[index] === word)) break;
-    commonWords.push(word);
-  }
+//   for (const [index, word] of wordLists[0].entries()) {
+//     if (!wordLists.every(words => words[index] === word)) break;
+//     commonWords.push(word);
+//   }
 
-  return commonWords.join(' ');
-};
+//   return commonWords.join(' ');
+// };
 
 const getField = <T,>(
   camelCaseValue: T | null | undefined,
@@ -484,28 +484,29 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
       dataIndex: 'materialDescription',
       key: 'materialDescription',
       render: (value: string | string[] | null | undefined) => {
-        if (!value || (Array.isArray(value) && value.length === 0)) return '-';
+        // if (!value || (Array.isArray(value) && value.length === 0)) return '-';
 
-        if (!Array.isArray(value)) return value;
+        // if (!Array.isArray(value)) return value;
 
-        const commonStartingText = getCommonStartingText(value);
+        // const commonStartingText = getCommonStartingText(value);
 
-        return (
-          <div className="whitespace-normal break-words">
-            {value.map((description, index) => {
-              const remainingText = description
-                .slice(commonStartingText.length)
-                .trim();
+        // return (
+        //   <div className="whitespace-normal break-words">
+        //     {value.map((description, index) => {
+        //       const remainingText = description
+        //         .slice(commonStartingText.length)
+        //         .trim();
 
-              return (
-                <div key={`${description}-${index}`}>
-                  {commonStartingText && <strong>{commonStartingText}</strong>}
-                  <div style={{ marginLeft: '8px' }}>{remainingText && ` (${remainingText})`}</div>
-                </div>
-              );
-            })}
-          </div>
-        );
+        //       return (
+        //         <div key={`${description}-${index}`}>
+        //           {commonStartingText && <strong>{commonStartingText}</strong>}
+        //           <div style={{ marginLeft: '8px' }}>{remainingText && ` (${remainingText})`}</div>
+        //         </div>
+        //       );
+        //     })}
+        //   </div>
+        // );
+        return value || '-'
       },
     },
     { title: 'HSN/SAC', dataIndex: 'hsnSac', key: 'hsnSac', render: (t: string) => t || '-' },

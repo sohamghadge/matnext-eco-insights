@@ -513,6 +513,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', render: (t: number | string | null | undefined) => t ? toNumber(t).toLocaleString('en-IN') : '-' },
     { title: 'Unit Of Measurement', dataIndex: 'unitOfMeasurement', key: 'unitOfMeasurement', render: (t: string) => t || '-' },
     { title: 'Rate Per Kg', dataIndex: 'ratePerKg', key: 'ratePerKg', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
+    { title: 'Material Amount', dataIndex: 'amount', key: 'amount', render: (t: number | string | null | undefined) => t != null ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
     { title: 'Gross Amount', dataIndex: 'grossAmount', key: 'grossAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
     { title: 'Taxable Value', dataIndex: 'taxableValue', key: 'taxableValue', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
     { title: 'IGST Rate Amount', dataIndex: 'igstRateAmount', key: 'igstRateAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },

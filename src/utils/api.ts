@@ -86,6 +86,7 @@ export interface InvoiceDetailsListItem {
   quantity?: number | string | null;
   unitOfMeasurement?: string | null;
   ratePerKg?: number | string | null;
+  amount?: number | string | null;
   grossAmount?: number | string | null;
   taxableValue?: number | string | null;
   igstRateAmount?: number | string | null;

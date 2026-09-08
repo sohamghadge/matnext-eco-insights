@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Upload, Table, Button, Modal, Divider, Tag, message, DatePicker } from 'antd';
+import { Upload, Table, Button, Modal, message, DatePicker } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { RcFile } from 'antd/es/upload';
-import { InboxOutlined, EyeOutlined } from '@ant-design/icons';
+import { InboxOutlined, DeleteOutlined, WarningFilled } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
 import {
   LineChart, Line, PieChart, Pie, Cell,
@@ -13,6 +13,7 @@ import {
   uploadFile,
   getOcrData,
   getInvoiceDetailsList,
+  deleteInvoiceDetails,
   getScrapSalesAverageRate,
   getScrapSalesCategoryDistribution,
   getScrapSalesTotalQuantity,
@@ -27,6 +28,7 @@ import type { FilterState } from '@/data/dashboardData';
 import type { TagItem } from '@/services/dashboardApi';
 import { categoryDistributionColors, materialTypesList, numberFormatting } from './dashboard.description';
 import DispatchInvoiceDetails from './DispatchInvoiceDetails';
+import UploadedInvoiceReview, { extractReviewInvoices, type ReviewInvoice } from './UploadedInvoiceReview';
 
 const { Dragger } = Upload;
 
@@ -182,10 +184,14 @@ const buildScrapSalesMetricsPayload = (
 
 const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryProps) => {
   const [invoices, setInvoices] = useState<InvoiceHistoryRow[]>([]);
+  const [reviewInvoices, setReviewInvoices] = useState<ReviewInvoice[]>([]);
   const [uploading, setUploading] = useState(false);
   const [refreshingDashboard, setRefreshingDashboard] = useState(false);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceHistoryRow | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+  const [deletingInvoice, setDeletingInvoice] = useState(false);
+  const deleteInProgress = useRef(false);
   const [invoicePage, setInvoicePage] = useState(1);
   const [paginationTotal, setPaginationTotal] = useState(0);
   const [graphData, setGraphData] = useState<ScrapSalesGraphData>(INITIAL_GRAPH_DATA);
@@ -194,6 +200,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   const [invoiceDateFrom, setInvoiceDateFrom] = useState<Date | null>(filters.dateFrom);
   const [invoiceDateTo, setInvoiceDateTo] = useState<Date | null>(filters.dateTo);
   const uploadBatchInProgress = useRef(false);
+  const invoiceReviewInProgress = useRef(false);
   // const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
@@ -204,31 +211,21 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     setInvoiceDateTo(filters.dateTo);
   }, [filters.dateTo]);
 
+  const invoiceFromDate = formatDateToDDMMYYYY(invoiceDateFrom);
+  const invoiceToDate = formatDateToDDMMYYYY(invoiceDateTo);
   const invoiceParams = useMemo<InvoiceDetailsListParams | null>(() => {
-    const fromDate = formatDateToDDMMYYYY(invoiceDateFrom);
-    const toDate = formatDateToDDMMYYYY(invoiceDateTo);
+    if (!invoiceFromDate || !invoiceToDate) return null;
+    return { fromDate: invoiceFromDate, toDate: invoiceToDate, pageSize: DEFAULT_PAGE_SIZE };
+  }, [invoiceFromDate, invoiceToDate]);
 
-    if (!fromDate || !toDate) return null;
-
-    return {
-      fromDate,
-      toDate,
-      pageSize: DEFAULT_PAGE_SIZE,
-    };
-  }, [invoiceDateFrom, invoiceDateTo]);
-
+  const selectedMaterialTypes = buildScrapSalesMetricsPayload(
+    filters, invoiceDateFrom, invoiceDateTo, materialOptions,
+  ).materialType;
+  // Depend on request values so parent renders cannot trigger duplicate requests.
   const scrapSalesMetricsPayload = useMemo<ScrapSalesMetricsParams | null>(() => {
-    const payload = buildScrapSalesMetricsPayload(
-      filters,
-      invoiceDateFrom,
-      invoiceDateTo,
-      materialOptions,
-    );
-
-    if (!payload.fromDate || !payload.toDate) return null;
-
-    return payload;
-  }, [filters, invoiceDateFrom, invoiceDateTo, materialOptions]);
+    if (!invoiceFromDate || !invoiceToDate) return null;
+    return { fromDate: invoiceFromDate, toDate: invoiceToDate, materialType: selectedMaterialTypes };
+  }, [invoiceFromDate, invoiceToDate, selectedMaterialTypes]);
 
   const loadInvoiceHistory = useCallback(async (pageNo: number) => {
     if (!invoiceParams) return false;
@@ -258,6 +255,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   }, [invoiceParams]);
 
   useEffect(() => {
+    if (invoiceReviewInProgress.current) return;
     if (!invoiceParams) {
       setInvoices([]);
       setInvoicePage(1);
@@ -345,6 +343,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   }, [filters.materials.length, loadTopBuyers, scrapSalesMetricsPayload]);
 
   useEffect(() => {
+    if (invoiceReviewInProgress.current) return;
     void loadScrapSalesMetrics();
   }, [loadScrapSalesMetrics]);
 
@@ -382,45 +381,56 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
       throw new Error('Failed to process invoice');
     }
 
-    return ocrData;
+    const extractedInvoices = extractReviewInvoices(ocrData, file.name);
+    if (!extractedInvoices.length) {
+      throw new Error(`${file.name}: No invoice details found in the OCR response`);
+    }
+    return extractedInvoices;
   }, []);
 
   const processInvoiceBatch = useCallback(async (files: RcFile[]) => {
     uploadBatchInProgress.current = true;
+    invoiceReviewInProgress.current = true;
     setUploading(true);
 
     try {
       const results = await Promise.allSettled(files.map(processInvoice));
       const failures = results.filter((result) => result.status === 'rejected');
 
-      if (failures.length > 0) {
-        failures.forEach((failure) => {
-          const errorMessage = failure.reason instanceof Error
-            ? failure.reason.message
-            : 'Failed to process invoice';
-          message.error(errorMessage);
-        });
-        return;
-      }
-
-      message.success(files.length === 1
-        ? 'Invoice processed successfully'
-        : `${files.length} invoices processed successfully`);
-
-      setUploading(false);
-      setRefreshingDashboard(true);
-      await Promise.all([
-        loadInvoiceHistory(1),
-        loadScrapSalesMetrics(),
-      ]);
+      failures.forEach((failure) => {
+        message.error(failure.reason instanceof Error ? failure.reason.message : 'Failed to process invoice');
+      });
+      const uploadedInvoices = results.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+      if (uploadedInvoices.length) setReviewInvoices(uploadedInvoices);
+      else invoiceReviewInProgress.current = false;
     } catch {
+      invoiceReviewInProgress.current = false;
       message.error('Failed to process invoice');
     } finally {
       setUploading(false);
       setRefreshingDashboard(false);
       uploadBatchInProgress.current = false;
     }
-  }, [loadInvoiceHistory, loadScrapSalesMetrics, processInvoice]);
+  }, [processInvoice]);
+
+  const refreshAfterInvoiceReview = async () => {
+    setRefreshingDashboard(true);
+    try {
+      await Promise.all([loadInvoiceHistory(1), loadScrapSalesMetrics()]);
+    } finally {
+      setRefreshingDashboard(false);
+    }
+  };
+
+  const closeInvoiceReview = () => {
+    invoiceReviewInProgress.current = false;
+    setReviewInvoices([]);
+  };
+
+  const continueInvoiceReview = async () => {
+    closeInvoiceReview();
+    await refreshAfterInvoiceReview();
+  };
 
   const handleBeforeUpload = useCallback((file: RcFile, fileList: RcFile[]) => {
     // Ant Design invokes beforeUpload once per file. The first invocation owns
@@ -442,6 +452,31 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
 
     return Upload.LIST_IGNORE;
   }, [processInvoiceBatch]);
+
+  const handleDeleteInvoice = async () => {
+    if (!invoiceToDelete || deleteInProgress.current) return;
+    deleteInProgress.current = true;
+    setDeletingInvoice(true);
+    try {
+      await deleteInvoiceDetails(invoiceToDelete);
+    } catch {
+      message.error('Failed to delete invoice. Please try again.');
+      deleteInProgress.current = false;
+      setDeletingInvoice(false);
+      return;
+    }
+
+    setInvoiceToDelete(null);
+    message.success('Invoice records deleted successfully');
+    setRefreshingDashboard(true);
+    try {
+      await Promise.all([loadInvoiceHistory(1), loadScrapSalesMetrics()]);
+    } finally {
+      deleteInProgress.current = false;
+      setDeletingInvoice(false);
+      setRefreshingDashboard(false);
+    }
+  };
 
   const invoiceColumns: TableColumnsType<InvoiceHistoryRow> = [
     { title: 'ID', dataIndex: 'id', key: 'id', render: (t: number | null) => t ?? '-' },
@@ -522,22 +557,26 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     { title: 'Company PAN', dataIndex: 'companyPan', key: 'companyPan', render: (t: string) => t || '-' },
     { title: 'Vehicle Number', dataIndex: 'vehicleNumber', key: 'vehicleNumber', render: (t: string) => t || '-' },
     { title: 'GST Number', dataIndex: 'gstNumber', key: 'gstNumber', render: (t: string) => t || '-' },
-    // {
-    //   title: 'Actions',
-    //   key: 'actions',
-    //   align: 'center',
-    //   fixed: 'right',
-    //   width: 80,
-    //   render: (_: unknown, record: InvoiceHistoryRow) => (
-    //     <div>
-    //       <Button
-    //         type="link"
-    //         icon={<EyeOutlined />}
-    //         onClick={() => { setSelectedInvoice(record); setModalOpen(true); }}
-    //       />
-    //     </div>
-    //   ),
-    // },
+    {
+      title: 'Action',
+      key: 'action',
+      align: 'center',
+      fixed: 'right',
+      width: 90,
+      render: (_: unknown, record: InvoiceHistoryRow) => {
+        const invoiceNumber = getField(record.invoiceNumber, record.invoice_number, '');
+        return (
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            aria-label={`Delete invoice ${invoiceNumber}`}
+            disabled={!invoiceNumber.trim() || deletingInvoice || refreshingDashboard}
+            onClick={() => setInvoiceToDelete(invoiceNumber)}
+          />
+        );
+      },
+    },
   ];
 
   // const lineItemColumns: TableColumnsType<InvoiceHistoryRow> = [
@@ -570,6 +609,53 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
 
   return (
     <div className="space-y-6 min-w-0">
+      {reviewInvoices.length > 0 && (
+        <UploadedInvoiceReview
+          invoices={reviewInvoices}
+          fields={invoiceColumns.flatMap(column => 'dataIndex' in column && typeof column.dataIndex === 'string'
+            ? [{ key: column.dataIndex, label: String(column.title) }] : [])}
+          onChange={setReviewInvoices}
+          onContinue={continueInvoiceReview}
+          onSaved={continueInvoiceReview}
+          onCancel={() => void continueInvoiceReview()}
+        />
+      )}
+      <Modal
+        title={null}
+        open={invoiceToDelete !== null}
+        onCancel={() => { if (!deleteInProgress.current) setInvoiceToDelete(null); }}
+        footer={null}
+        width={610}
+        centered
+        closable={!deletingInvoice}
+        maskClosable={!deletingInvoice}
+        keyboard={!deletingInvoice}
+        styles={{ container: { padding: 0, overflow: 'hidden', borderRadius: 12 } }}
+      >
+        <div className="flex items-center gap-8 bg-red-50/60 px-8 py-5">
+          <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-100">
+            <WarningFilled className="text-[28px] text-red-600" />
+          </span>
+          <h2 className="m-0 text-[22px] font-semibold text-slate-900">Confirm Deletion</h2>
+        </div>
+        <div className="px-6 pb-7 pt-2 sm:pl-[115px] sm:pr-5 text-base text-slate-500">
+          <p className="mb-2">This is your invoice number.</p>
+          <div className="inline-flex max-w-full flex-wrap gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1">
+            <span>Invoice No:</span>
+            <strong className="break-all font-semibold text-red-600">{invoiceToDelete}</strong>
+          </div>
+          <p className="mt-3 leading-7">If you continue with delete, then same invoice number records will be deleted also.</p>
+          <p className="mt-4 font-semibold text-slate-800">Are you sure you want to delete?</p>
+          <div className="mt-7 flex justify-end gap-3">
+            <Button size="large" className="min-w-[122px]" disabled={deletingInvoice} onClick={() => setInvoiceToDelete(null)}>
+              Cancel
+            </Button>
+            <Button size="large" type="primary" danger icon={<DeleteOutlined />} className="min-w-[138px]" loading={deletingInvoice} onClick={() => void handleDeleteInvoice()}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
       {/* Upload Section */}
       <div className="bg-card rounded-xl p-5 shadow-card border border-border overflow-hidden">
         <div className="mb-4 flex items-start justify-between gap-4">
@@ -607,7 +693,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
           accept=".pdf,.jpg,.jpeg,.png"
           showUploadList={false}
           beforeUpload={handleBeforeUpload}
-          disabled={uploading || refreshingDashboard}
+          disabled={uploading || refreshingDashboard || reviewInvoices.length > 0}
         >
           <p className="ant-upload-drag-icon"><InboxOutlined /></p>
           <p className="ant-upload-text">

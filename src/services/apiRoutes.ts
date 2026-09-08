@@ -7,6 +7,7 @@ export const API_ROUTES = {
     USER_REPORTS: (pageNo: number) => `/job-management/v1/userreports/${pageNo}`,
     FILE_UPLOAD: `/user-management/v1/file`,
     OCR: `/job-management/v1/ocr`,
+    UPDATE_INVOICE_DETAILS: `/job-management/v1/invoice-details`,
     INVOICE_DETAILS: (pageNo: number) => `/job-management/v1/invoice-details/${pageNo}`,
     DISPATCH_INVOICE_DETAILS: (pageNo: number) => `/job-management/v1/dispatch-invoice-details/${pageNo}`,
     SCRAP_SALES_AVERAGE_RATE: `/dashboard-management/v1/scrap-sales/average-rate`,

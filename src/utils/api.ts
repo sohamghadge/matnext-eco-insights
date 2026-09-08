@@ -1,4 +1,4 @@
-import type { ApiResponse } from '@/services/apiClient';
+import apiClient, { type ApiResponse } from '@/services/apiClient';
 import { get, post } from '@/services/apiMethods';
 import { API_ROUTES } from '@/services/apiRoutes';
 
@@ -150,6 +150,41 @@ export const uploadFile = async (file: File): Promise<string | null> => {
 export const getOcrData = async <T = unknown>(payload: OcrPayload): Promise<T | null> => {
   const response = await post<OcrResponse<T>, OcrPayload>(API_ROUTES.OCR, payload);
   return response.data ? response.data : null;
+};
+
+export type InvoiceEditData = Record<string, unknown> & {
+  invoiceNumber?: string;
+  materialDescription: Array<Record<string, unknown>>;
+};
+
+const invoiceUpdateFields = [
+  'invoiceNumber', 'invoiceDate', 'deliveryNote', 'ewayBillNumber', 'buyersOrderNumber',
+  'shipTo', 'billTo', 'dispatchedThrough', 'scrapItemCategory', 'hsnSac', 'quantity',
+  'unitOfMeasurement', 'ratePerKg', 'grossAmount', 'taxableValue', 'igstRateAmount',
+  'totalTaxAmount', 'companyPan', 'vehicleNumber', 'gstNumber', 'totalValue',
+] as const;
+
+export const updateInvoiceDetails = async (invoice: InvoiceEditData): Promise<void> => {
+  const payload = Object.fromEntries(invoiceUpdateFields.map(key => [key, invoice[key] ?? null]));
+  payload.materialDescription = (invoice.materialDescription ?? []).map(item =>
+    Object.fromEntries(['id', 'description', 'hsnSac', 'quantity', 'unitOfMeasurement', 'ratePerKg', 'amount']
+      .map(key => [key, item[key] ?? null])),
+  );
+  const { data } = await apiClient.patch(API_ROUTES.UPDATE_INVOICE_DETAILS, payload);
+  if (data?.success === false || data?.error) {
+    throw new Error(data?.message || 'Failed to save invoice');
+  }
+};
+
+export const deleteInvoiceDetails = async (invoiceNumber: string): Promise<void> => {
+  if (!invoiceNumber.trim()) throw new Error('Invoice number is required');
+
+  const { data } = await apiClient.delete(API_ROUTES.UPDATE_INVOICE_DETAILS, {
+    params: { invoiceNumber },
+  });
+  if (data?.success === false || data?.error) {
+    throw new Error(data?.message || 'Failed to delete invoice');
+  }
 };
 
 export const getInvoiceDetailsList = async (

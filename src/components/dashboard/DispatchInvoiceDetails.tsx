@@ -33,14 +33,12 @@ const getDefaultDateRange = () => {
   };
 };
 
-const formatNumber = (value: number | string | null | undefined, currency = false) => {
-  if (value == null || value === '') return '-';
 
-  const number = typeof value === 'number' ? value : Number(value.replace(/,/g, ''));
-  if (!Number.isFinite(number)) return '-';
+const toNumber = (value: string | number | null | undefined) => {
+  if (value === null || value === undefined || value === '') return 0;
 
-  const formatted = number.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-  return currency ? `₹ ${formatted}` : formatted;
+  const parsedValue = Number.parseFloat(String(value).replace(/,/g, ''));
+  return Number.isNaN(parsedValue) ? 0 : parsedValue;
 };
 
 const columns: TableColumnsType<DispatchInvoiceRow> = [
@@ -52,11 +50,11 @@ const columns: TableColumnsType<DispatchInvoiceRow> = [
     key: 'materialDescription',
     render: (value: string | null | undefined) => value || '-',
   },
-  { title: 'Qty (Kg)', dataIndex: 'quantity', key: 'quantity', align: 'right', render: (value) => formatNumber(value) },
-  { title: 'Amount', dataIndex: 'grossAmount', key: 'amount', align: 'right', render: (value) => formatNumber(value, true) },
-  { title: 'Addnl Exp', dataIndex: 'taxableValue', key: 'additionalExpense', align: 'right', render: (value) => formatNumber(value, true) },
-  { title: 'Final Amount (INR)', dataIndex: 'totalTaxAmount', key: 'finalAmount', align: 'right', render: (value) => formatNumber(value, true) },
-  { title: 'Rate Rs/ kg', dataIndex: 'ratePerKg', key: 'ratePerKg', align: 'right', render: (value) => formatNumber(value, true) },
+  { title: 'Qty (Kg)', dataIndex: 'quantity', key: 'quantity', align: 'right', render: (value) => value ? toNumber(value).toLocaleString('en-IN') : '-' },
+  { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right', render: (value) => value != null ? `₹ ${toNumber(value).toLocaleString('en-IN')}` : '-' },
+  { title: 'Addnl Exp', dataIndex: 'taxableValue', key: 'additionalExpense', align: 'right', render: (value) => value != null ? `₹ ${toNumber(value).toLocaleString('en-IN')}` : '-' },
+  { title: 'Final Amount (INR)', dataIndex: 'totalValue', key: 'finalAmount', align: 'right', render: (value) => value != null ? `₹ ${toNumber(value).toLocaleString('en-IN')}` : '-' },
+  { title: 'Rate Rs/ kg', dataIndex: 'ratePerKg', key: 'ratePerKg', align: 'right', render: (value) => value ? `₹ ${toNumber(value).toLocaleString('en-IN')}` : '-' },
 ];
 
 const DispatchInvoiceDetails = ({ materialOptions = [], sourceData = [] }: DispatchInvoiceDetailsProps) => {

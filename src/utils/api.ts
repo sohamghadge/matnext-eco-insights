@@ -37,13 +37,13 @@ export type InvoiceDetailsListParams = {
 
 export type DispatchInvoiceDetailsParams = InvoiceDetailsListParams & {
   materialType?: string;
+  recyclerInvoice: boolean;
 };
 
 export interface DispatchInvoiceDetailsItem {
   id?: number | null;
   invoiceNumber?: string | null;
   invoiceDate?: string | null;
-  materialDescription?: string | string[] | null;
   quantity?: number | string | null;
   amount?: number | string | null;
   additionalExpense?: number | string | null;
@@ -211,7 +211,7 @@ export const getDispatchInvoiceDetails = async (
   params: DispatchInvoiceDetailsParams,
 ): Promise<DispatchInvoiceDetailsData | null> => {
   const response = await get<DispatchInvoiceDetailsResponse | ApiResponse<DispatchInvoiceDetailsData>>(
-    API_ROUTES.DISPATCH_INVOICE_DETAILS(pageNo),
+    API_ROUTES.INVOICE_DETAILS(pageNo),
     {
       ...params,
       pageSize: params.pageSize ?? 5,

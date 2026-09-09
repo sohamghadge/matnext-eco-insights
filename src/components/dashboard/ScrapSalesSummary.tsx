@@ -199,6 +199,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   const topBuyersLoading = Boolean(topBuyersData.requestToken);
   const [invoiceDateFrom, setInvoiceDateFrom] = useState<Date | null>(filters.dateFrom);
   const [invoiceDateTo, setInvoiceDateTo] = useState<Date | null>(filters.dateTo);
+  const [dispatchInvoiceRefreshKey, setDispatchInvoiceRefreshKey] = useState(0);
   const uploadBatchInProgress = useRef(false);
   const invoiceReviewInProgress = useRef(false);
   // const [modalOpen, setModalOpen] = useState(false);
@@ -417,6 +418,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     setRefreshingDashboard(true);
     try {
       await Promise.all([loadInvoiceHistory(1), loadScrapSalesMetrics()]);
+      setDispatchInvoiceRefreshKey(key => key + 1);
     } finally {
       setRefreshingDashboard(false);
     }
@@ -471,6 +473,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     setRefreshingDashboard(true);
     try {
       await Promise.all([loadInvoiceHistory(1), loadScrapSalesMetrics()]);
+      setDispatchInvoiceRefreshKey(key => key + 1);
     } finally {
       deleteInProgress.current = false;
       setDeletingInvoice(false);
@@ -705,7 +708,12 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
           </p>
         </Dragger>
 
-        <DispatchInvoiceDetails materialOptions={materialOptions} sourceData={invoices.length ? invoices?.slice(0, 3) : []} />
+        <DispatchInvoiceDetails
+          materialOptions={materialOptions}
+          dateFrom={invoiceDateFrom}
+          dateTo={invoiceDateTo}
+          refreshKey={dispatchInvoiceRefreshKey}
+        />
 
         <div className="mt-6 min-w-0">
           <h3 className="text-lg font-semibold text-foreground mb-4">Invoice History</h3>

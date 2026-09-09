@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, message, Select, Table } from 'antd';
+import { message, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
-import type { Dayjs } from 'dayjs';
 import type { TagItem } from '@/services/dashboardApi';
 import {
   getDispatchInvoiceDetails,
   type DispatchInvoiceDetailsItem,
   type DispatchInvoiceDetailsParams,
 } from '@/utils/api';
-import { dayJs, formatDateToDDMMYYYY } from '@/utils/dayjs';
+import { formatDateToDDMMYYYY } from '@/utils/dayjs';
 import { materialTypesList } from './dashboard.description';
 
 const PAGE_SIZE = 5;
-const SECTION_DATE_FORMAT = 'YYYY/MM/DD';
 
 interface DispatchInvoiceRow extends DispatchInvoiceDetailsItem {
   key: string;
@@ -20,19 +18,10 @@ interface DispatchInvoiceRow extends DispatchInvoiceDetailsItem {
 
 interface DispatchInvoiceDetailsProps {
   materialOptions?: TagItem[];
-  sourceData?: TagItem[];
+  dateFrom: Date | null;
+  dateTo: Date | null;
+  refreshKey?: number;
 }
-
-const getDefaultDateRange = () => {
-  const now = new Date();
-  const fiscalStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-
-  return {
-    dateFrom: new Date(fiscalStartYear, 3, 1),
-    dateTo: new Date(fiscalStartYear + 1, 2, 31),
-  };
-};
-
 
 const toNumber = (value: string | number | null | undefined) => {
   if (value === null || value === undefined || value === '') return 0;
@@ -57,20 +46,12 @@ const columns: TableColumnsType<DispatchInvoiceRow> = [
   { title: 'Rate Rs/ kg', dataIndex: 'ratePerKg', key: 'ratePerKg', align: 'right', render: (value) => value ? `₹ ${toNumber(value).toLocaleString('en-IN')}` : '-' },
 ];
 
-const DispatchInvoiceDetails = ({ materialOptions = [], sourceData = [] }: DispatchInvoiceDetailsProps) => {
-  const defaultDateRange = useMemo(getDefaultDateRange, []);
+const DispatchInvoiceDetails = ({ materialOptions = [], dateFrom, dateTo, refreshKey = 0 }: DispatchInvoiceDetailsProps) => {
   const [rows, setRows] = useState<DispatchInvoiceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<Array<string | number>>([]);
-  const [dateFrom, setDateFrom] = useState<Date | null>(defaultDateRange.dateFrom);
-  const [dateTo, setDateTo] = useState<Date | null>(defaultDateRange.dateTo);
-
-  const materialSelectOptions = useMemo(() => materialOptions.flatMap((option) => {
-    if (option.id == null || !option.name) return [];
-    return [{ value: option.id, label: option.name }];
-  }), [materialOptions]);
 
   const params = useMemo<DispatchInvoiceDetailsParams | null>(() => {
     const formattedFromDate = formatDateToDDMMYYYY(dateFrom);
@@ -87,6 +68,7 @@ const DispatchInvoiceDetails = ({ materialOptions = [], sourceData = [] }: Dispa
       fromDate: formattedFromDate,
       toDate: formattedToDate,
       pageSize: PAGE_SIZE,
+      recyclerInvoice: false,
       ...(materialType ? { materialType } : {}),
     };
   }, [dateFrom, dateTo, materialOptions, selectedMaterialIds]);
@@ -127,22 +109,13 @@ const DispatchInvoiceDetails = ({ materialOptions = [], sourceData = [] }: Dispa
       return;
     }
 
-    // void loadPage(1);
-  }, [loadPage, params]);
-
-  const handleDateChange = (key: 'from' | 'to', value: Dayjs | null) => {
-    const nextDate = value ? value.toDate() : null;
-    if (key === 'from') {
-      setDateFrom(nextDate);
-      return;
-    }
-    setDateTo(nextDate);
-  };
+    void loadPage(1);
+  }, [loadPage, params, refreshKey]);
 
   return (
-    <div className="mt-6 min-w-0">
+    <div className="bg-card rounded-xl p-5 shadow-card ">
       <div className="mb-4 flex items-start justify-between gap-4">
-        <h3 className="min-w-0 text-lg font-semibold text-foreground" > Invoice summary</h3 >
+        <h3 className="min-w-0 text-lg font-semibold text-foreground">Invoice summary</h3>
         {/* <div className="flex shrink-0 items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-[10px] uppercase tracking-wider text-primary font-semibold opacity-70">
@@ -183,25 +156,23 @@ const DispatchInvoiceDetails = ({ materialOptions = [], sourceData = [] }: Dispa
             />
           </div>
         </div> */}
-      </div >
-      <div className="w-full overflow-x-auto">
-        <Table<DispatchInvoiceRow>
-          columns={columns}
-          dataSource={sourceData}
-          rowKey="key"
-          loading={loading}
-          // size="middle"
-          scroll={{ x: 900 }}
-          pagination={{
-            current: page,
-            pageSize: PAGE_SIZE,
-            total,
-            showSizeChanger: false,
-            // onChange: (nextPage) => void loadPage(nextPage),
-          }}
-        />
       </div>
-    </div >
+      <Table<DispatchInvoiceRow>
+        columns={columns}
+        dataSource={rows}
+        loading={loading}
+        scroll={{ x: 900 }}
+        pagination={{
+          current: page,
+          pageSize: PAGE_SIZE,
+          total,
+          showSizeChanger: false,
+          showTotal: (count) => `Total ${count} invoices`,
+          onChange: (nextPage) => void loadPage(nextPage),
+          hideOnSinglePage: true,
+        }}
+      />
+    </div>
   );
 };
 

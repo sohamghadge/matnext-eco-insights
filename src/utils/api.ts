@@ -9,22 +9,48 @@ type FileUploadResponse = ApiResponse<{
 type OcrPayload = {
   jobType: string;
   source: string;
-  dmsId: string;
+  dmsId?: string;
+  dmsIds?: string[];
 };
 
 type OcrResponse<T = unknown> = ApiResponse<T>;
+
+export type OcrStatusData = {
+  status?: string;
+} & Record<string, unknown>;
+
+type OcrStatusResponse = ApiResponse<OcrStatusData>;
+
+type GenerateUserReportData = {
+  success?: boolean;
+  message?: string;
+};
+
+type GenerateUserReportResponse = ApiResponse<GenerateUserReportData>;
+
+export type GenerateUserReportPayload = {
+  type: 'INVOICE_DETAILS_SUMMARY';
+  from: string;
+  to: string;
+  searchTag?: 'SCRAP_ITEM_CATEGORY';
+  search?: string;
+};
 
 export type ScrapSalesAverageRateParams = {
   fromDate: string;
   toDate: string;
   materialType: string;
+  searchTag?: 'SCRAP_ITEM_CATEGORY';
+  search?: string;
 };
 
 export type topBuyersRateParams = {
   fromDate: string;
   toDate: string;
   materialType: string;
-  pageSize: number
+  pageSize: number;
+  searchTag?: 'SCRAP_ITEM_CATEGORY';
+  search?: string;
 };
 
 export type ScrapSalesMetricsParams = ScrapSalesAverageRateParams;
@@ -33,6 +59,8 @@ export type InvoiceDetailsListParams = {
   fromDate: string;
   toDate: string;
   pageSize?: number;
+  searchTag?: 'SCRAP_ITEM_CATEGORY';
+  search?: string;
 };
 
 export type DispatchInvoiceDetailsParams = InvoiceDetailsListParams & {
@@ -44,6 +72,7 @@ export interface DispatchInvoiceDetailsItem {
   id?: number | null;
   invoiceNumber?: string | null;
   invoiceDate?: string | null;
+  scrapItemCategory?: string | null;
   quantity?: number | string | null;
   amount?: number | string | null;
   additionalExpense?: number | string | null;
@@ -150,6 +179,24 @@ export const uploadFile = async (file: File): Promise<string | null> => {
 export const getOcrData = async <T = unknown>(payload: OcrPayload): Promise<T | null> => {
   const response = await post<OcrResponse<T>, OcrPayload>(API_ROUTES.OCR, payload);
   return response.data ? response.data : null;
+};
+
+export const getOcrStatus = async (uuid: string): Promise<OcrStatusData | null> => {
+  const response = await get<OcrStatusResponse>(API_ROUTES.OCR_STATUS(uuid));
+  return response.success === false ? null : response.data ?? null;
+};
+
+export const generateUserReport = async (payload: GenerateUserReportPayload): Promise<GenerateUserReportResponse> => {
+  const response = await post<GenerateUserReportResponse, GenerateUserReportPayload>(
+    API_ROUTES.CREATE_USER_REPORT,
+    payload,
+  );
+
+  if (!response.data || response.success === false || response.data?.success === false) {
+    throw new Error(response.message || response.data?.message || 'Failed to generate report');
+  }
+
+  return response;
 };
 
 export type InvoiceEditData = Record<string, unknown> & {

@@ -78,10 +78,20 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
   const savingRef = useRef(false);
   const [form] = Form.useForm<InvoiceEditData>();
   const invoice = invoices[activeIndex];
+  const hasMultipleInvoices = invoices.length > 1;
   const startEditing = () => {
     form.resetFields();
     form.setFieldsValue(invoice);
     setEditing(true);
+  };
+  const cancelEditing = () => {
+    form.resetFields();
+    if (hasMultipleInvoices) {
+      setEditing(false);
+      return;
+    }
+
+    onCancel();
   };
   const save = async (values: InvoiceEditData) => {
     if (savingRef.current) return;
@@ -98,7 +108,13 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
     onChange(invoices.map((item, index) => index === activeIndex ? { ...item, ...values } : item));
     setEditing(false);
     message.success('Invoice updated successfully');
-    try { await onSaved(); } finally { setSaving(false); savingRef.current = false; }
+    try {
+      await onSaved();
+      if (!hasMultipleInvoices) onCancel();
+    } finally {
+      setSaving(false);
+      savingRef.current = false;
+    }
   };
 
   return (
@@ -159,8 +175,8 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
       </div>
 
       <div className="flex justify-center gap-3 border-t border-slate-100 bg-slate-50 px-7 py-4">
-        {editing ? <><Button size="large" disabled={saving} onClick={onCancel}>Cancel</Button>
-          <Button size="large" type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => form.submit()}>Save</Button></>
+        {editing ? <><Button size="large" disabled={saving} onClick={cancelEditing}>Cancel</Button>
+          <Button size="large" type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => form.submit()}>Update</Button></>
           : <><Button size="large" icon={<EditOutlined />} disabled={saving} onClick={startEditing}>Edit</Button>
             <Button size="large" type="primary" disabled={saving} onClick={() => void onContinue()}>Continue</Button></>}
       </div>

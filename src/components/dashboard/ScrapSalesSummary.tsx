@@ -512,6 +512,10 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     await refreshAfterInvoiceReview();
   };
 
+  const saveInvoiceReview = async () => {
+    await refreshAfterInvoiceReview();
+  };
+
   const handleBeforeUpload = useCallback((file: RcFile, fileList: RcFile[]) => {
     // Ant Design invokes beforeUpload once per file. The first invocation owns
     // the complete selection and coordinates it as one batch.
@@ -702,7 +706,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
             ? [{ key: column.dataIndex, label: String(column.title) }] : [])}
           onChange={setReviewInvoices}
           onContinue={continueInvoiceReview}
-          onSaved={continueInvoiceReview}
+          onSaved={saveInvoiceReview}
           onCancel={() => void continueInvoiceReview()}
         />
       )}
@@ -930,12 +934,12 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
                       border: '1px solid #DDF4E6',
                       boxShadow: '0 12px 30px rgba(32, 163, 90, 0.10)',
                     }}
-                    formatter={(v: number) => [`₹ ${numberFormatting(v)}`, 'Total Tax Amount']}
+                    formatter={(v: number) => [`₹ ${numberFormatting(v)}`, 'Total Amount']}
                   />
                   <Line
                     type="natural"
                     dataKey="tax"
-                    name="Total Tax Amount"
+                    name="Total Amount"
                     stroke={SCRAP_RATE_LINE_COLOR}
                     strokeWidth={2}
                     strokeLinecap="round"
@@ -951,7 +955,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
               </ResponsiveContainer>
             </div>
             <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-5">
-              <p className="text-sm font-medium text-emerald-900">Total Tax Amount</p>
+              <p className="text-sm font-medium text-emerald-900">Total Amount</p>
               <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-700">
                 ₹ {numberFormatting(graphData?.totalValue?.totalScrapSalesValue || 0)}
               </p>

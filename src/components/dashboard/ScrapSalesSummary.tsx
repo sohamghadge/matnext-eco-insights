@@ -62,7 +62,7 @@ const SCRAP_CATEGORY_DEBOUNCE_MS = 500;
 const SCRAP_RATE_LINE_COLOR = '#20A35A';
 const SECTION_DATE_FORMAT = 'YYYY/MM/DD';
 
-interface InvoiceHistoryRow extends InvoiceDetailsListItem {
+interface InvoiceHistoryRow extends InvoiceDetailsListItem, Record<string, unknown> {
   key: string;
 }
 
@@ -191,6 +191,59 @@ const getField = <T,>(
   if (snakeCaseValue !== null && snakeCaseValue !== undefined) return snakeCaseValue;
   return fallback;
 };
+
+const normalizeInvoiceFieldName = (fieldName: string) => fieldName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const getInvoiceField = (record: InvoiceHistoryRow, fieldNames: string[]) => {
+  const entries = Object.entries(record);
+
+  for (const fieldName of fieldNames) {
+    const directValue = record[fieldName];
+    if (directValue !== null && directValue !== undefined && directValue !== '') return directValue;
+
+    const normalizedFieldName = normalizeInvoiceFieldName(fieldName);
+    const match = entries.find(([key, value]) => (
+      normalizeInvoiceFieldName(key) === normalizedFieldName
+      && value !== null
+      && value !== undefined
+      && value !== ''
+    ));
+    if (match) return match[1];
+  }
+
+  return null;
+};
+
+const displayInvoiceValue = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return '-';
+  if (Array.isArray(value)) return value.length ? value.join(', ') : '-';
+  return String(value);
+};
+
+const displayInvoiceNumber = (value: unknown) => (
+  value !== null && value !== undefined && value !== ''
+    ? toNumber(value as string | number).toLocaleString('en-IN')
+    : '-'
+);
+
+const displayInvoiceCurrency = (value: unknown) => (
+  value !== null && value !== undefined && value !== ''
+    ? `₹ ${toNumber(value as string | number).toLocaleString('en-IN')}`
+    : '-'
+);
+
+const invoiceReviewFields = [
+  { key: 'invoiceNumber', label: 'Invoice Number' },
+  { key: 'invoiceDate', label: 'Invoice Date' },
+  { key: 'shipTo', label: 'Ship To' },
+  { key: 'billTo', label: 'Bill To' },
+  { key: 'scrapItemCategory', label: 'Scrap Item Category' },
+  { key: 'quantity', label: 'Quantity' },
+  { key: 'unitOfMeasurement', label: 'Unit Of Measurement' },
+  { key: 'ratePerKg', label: 'Rate Per Kg' },
+  { key: 'amount', label: 'Material Amount' },
+  { key: 'totalValue', label: 'Total Amount' },
+];
 
 const buildScrapSalesMetricsPayload = (
   filters: FilterState,
@@ -569,84 +622,40 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   };
 
   const invoiceColumns: TableColumnsType<InvoiceHistoryRow> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', render: (t: number | null) => t ?? '-' },
-    { title: 'Creation Date', dataIndex: 'creationDate', key: 'creationDate', render: (t: number | null) => formatDateToDDMMYYYY(t) ?? '-' },
-    { title: 'Modification Date', dataIndex: 'modificationDate', key: 'modificationDate', render: (t: number | null) => formatDateToDDMMYYYY(t) ?? '-' },
-    { title: 'OCR Management ID', dataIndex: 'ocrManagementId', key: 'ocrManagementId', render: (t: number | null) => t ?? '-' },
-    { title: 'Scrap ID', dataIndex: 'scrapId', key: 'scrapId', render: (t: number | null) => t ?? '-' },
-    { title: 'User ID', dataIndex: 'userId', key: 'userId', render: (t: number | null) => t ?? '-' },
-    { title: 'Invoice Number', dataIndex: 'invoiceNumber', key: 'invoiceNumber', render: (t: string) => t || '-' },
-    { title: 'Invoice Date', dataIndex: 'invoiceDate', key: 'invoiceDate', render: (t: string) => t || '-' },
-    { title: 'Delivery Note', dataIndex: 'deliveryNote', key: 'deliveryNote', render: (t: string) => t || '-' },
-    { title: 'e-Way Bill Number', dataIndex: 'ewayBillNumber', key: 'ewayBillNumber', render: (t: string) => t || '-' },
-    { title: 'Buyers Order Number', dataIndex: 'buyersOrderNumber', key: 'buyersOrderNumber', render: (t: string) => t || '-' },
+    { title: 'Voucher Number (Invoice number)', key: 'voucherNumber', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['voucherNumber', 'invoiceNumber', 'invoice_number'])) },
+    { title: 'Reference', key: 'reference', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['reference'])) },
+    { title: 'Date (Invoice date)', key: 'date', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['date', 'invoiceDate', 'invoice_date'])) },
+    { title: 'Voucher Type', key: 'voucherType', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['voucherType'])) },
+    { title: 'Party Name', key: 'partyName', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['partyName', 'billTo', 'bill_to'])) },
+    { title: 'Party Alias', key: 'partyAlias', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['partyAlias'])) },
     {
-      title: 'Ship To',
-      dataIndex: 'shipTo',
-      key: 'shipTo',
-      width: 400,
-      render: (t: string) => (
-        <div className="max-w-[400px] whitespace-normal break-words">
-          {t || '-'}
+      title: 'Consignee/Buyer (Ship To)',
+      key: 'consigneeBuyer',
+      width: 320,
+      render: (_value, record) => (
+        <div className="max-w-[320px] whitespace-normal break-words">
+          {displayInvoiceValue(getInvoiceField(record, ['consigneeBuyer', 'shipTo', 'ship_to']))}
         </div>
       ),
     },
-    {
-      title: 'Bill To',
-      dataIndex: 'billTo',
-      key: 'billTo',
-      width: 400,
-      render: (t: string) => (
-        <div className="max-w-[400px] whitespace-normal break-words">
-          {t || '-'}
-        </div>
-      ),
-    },
-    { title: 'Dispatched Through', dataIndex: 'dispatchedThrough', key: 'dispatchedThrough', render: (t: string) => t || '-' },
-    { title: 'Scrap Item Category', dataIndex: 'scrapItemCategory', key: 'scrapItemCategory', render: (t: string) => t || '-' },
-    {
-      title: 'Material Description',
-      dataIndex: 'materialDescription',
-      key: 'materialDescription',
-      render: (value: string | string[] | null | undefined) => {
-        // if (!value || (Array.isArray(value) && value.length === 0)) return '-';
-
-        // if (!Array.isArray(value)) return value;
-
-        // const commonStartingText = getCommonStartingText(value);
-
-        // return (
-        //   <div className="whitespace-normal break-words">
-        //     {value.map((description, index) => {
-        //       const remainingText = description
-        //         .slice(commonStartingText.length)
-        //         .trim();
-
-        //       return (
-        //         <div key={`${description}-${index}`}>
-        //           {commonStartingText && <strong>{commonStartingText}</strong>}
-        //           <div style={{ marginLeft: '8px' }}>{remainingText && ` (${remainingText})`}</div>
-        //         </div>
-        //       );
-        //     })}
-        //   </div>
-        // );
-        return value || '-'
-      },
-    },
-    { title: 'HSN/SAC', dataIndex: 'hsnSac', key: 'hsnSac', render: (t: string) => t || '-' },
-    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', render: (t: number | string | null | undefined) => t ? toNumber(t).toLocaleString('en-IN') : '-' },
-    { title: 'Unit Of Measurement', dataIndex: 'unitOfMeasurement', key: 'unitOfMeasurement', render: (t: string) => t || '-' },
-    { title: 'Rate Per Kg', dataIndex: 'ratePerKg', key: 'ratePerKg', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
-    { title: 'Material Amount', dataIndex: 'amount', key: 'amount', render: (t: number | string | null | undefined) => t != null ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
-    { title: 'Gross Amount', dataIndex: 'grossAmount', key: 'grossAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
-    { title: 'Taxable Value', dataIndex: 'taxableValue', key: 'taxableValue', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
-    { title: 'IGST Rate Amount', dataIndex: 'igstRateAmount', key: 'igstRateAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
-    { title: 'Total Tax Amount', dataIndex: 'totalTaxAmount', key: 'totalTaxAmount', render: (t: number | string | null | undefined) => t ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
-    { title: 'Total Amount', dataIndex: 'totalValue', key: 'totalValue', render: (t: number | string | null | undefined) => t != null ? `₹ ${toNumber(t).toLocaleString('en-IN')}` : '-' },
-    { title: 'Company PAN', dataIndex: 'companyPan', key: 'companyPan', render: (t: string) => t || '-' },
-    { title: 'Vehicle Number', dataIndex: 'vehicleNumber', key: 'vehicleNumber', render: (t: string) => t || '-' },
-    { title: 'GST Number', dataIndex: 'gstNumber', key: 'gstNumber', render: (t: string) => t || '-' },
+    { title: "Buyer's TIN No.", key: 'buyersTinNo', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['buyersTinNo', 'buyerTinNo'])) },
+    { title: 'CST Number', key: 'cstNumber', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['cstNumber'])) },
+    { title: 'Item Name (Scrap Item Category)', key: 'itemName', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['itemName', 'scrapItemCategory', 'scrap_item_category'])) },
+    { title: 'Godown', key: 'godown', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['godown'])) },
+    { title: 'Item Batch', key: 'itemBatch', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['itemBatch'])) },
+    { title: 'Acutal Quantity', key: 'actualQuantity', align: 'right', render: (_value, record) => displayInvoiceNumber(getInvoiceField(record, ['acutalQuantity', 'actualQuantity'])) },
+    { title: 'Billed Quantity (Quantity)', key: 'billedQuantity', align: 'right', render: (_value, record) => displayInvoiceNumber(getInvoiceField(record, ['billedQuantity', 'quantity'])) },
+    { title: 'Alternate Actual Quantity', key: 'alternateActualQuantity', align: 'right', render: (_value, record) => displayInvoiceNumber(getInvoiceField(record, ['alternateActualQuantity'])) },
+    { title: 'Alternate Billed Quantity', key: 'alternateBilledQuantity', align: 'right', render: (_value, record) => displayInvoiceNumber(getInvoiceField(record, ['alternateBilledQuantity'])) },
+    { title: 'Rate (Rate per kg)', key: 'rate', align: 'right', render: (_value, record) => displayInvoiceCurrency(getInvoiceField(record, ['rate', 'ratePerKg', 'rate_per_kg'])) },
+    { title: 'Purchase Rate', key: 'purchaseRate', align: 'right', render: (_value, record) => displayInvoiceCurrency(getInvoiceField(record, ['purchaseRate'])) },
+    { title: 'Unit', key: 'unit', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['unit', 'unitOfMeasurement', 'unit_of_measurement'])) },
+    { title: 'Discount', key: 'discount', align: 'right', render: (_value, record) => displayInvoiceNumber(getInvoiceField(record, ['discount'])) },
+    { title: 'Discount Amount', key: 'discountAmount', align: 'right', render: (_value, record) => displayInvoiceCurrency(getInvoiceField(record, ['discountAmount'])) },
+    { title: 'Margin', key: 'margin', align: 'right', render: (_value, record) => displayInvoiceNumber(getInvoiceField(record, ['margin'])) },
+    { title: 'Amount (Material Amount)', key: 'amount', align: 'right', render: (_value, record) => displayInvoiceCurrency(getInvoiceField(record, ['amount', 'grossAmount', 'gross_amount'])) },
+    { title: 'Purchase/Sales Ledger', key: 'purchaseSalesLedger', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['purchaseSalesLedger'])) },
+    { title: 'Narration', key: 'narration', render: (_value, record) => displayInvoiceValue(getInvoiceField(record, ['narration'])) },
     {
       title: 'Action',
       key: 'action',
@@ -702,8 +711,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
       {reviewInvoices.length > 0 && (
         <UploadedInvoiceReview
           invoices={reviewInvoices}
-          fields={invoiceColumns.flatMap(column => 'dataIndex' in column && typeof column.dataIndex === 'string'
-            ? [{ key: column.dataIndex, label: String(column.title) }] : [])}
+          fields={invoiceReviewFields}
           onChange={setReviewInvoices}
           onContinue={continueInvoiceReview}
           onSaved={saveInvoiceReview}

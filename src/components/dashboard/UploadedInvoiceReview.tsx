@@ -7,6 +7,7 @@ import { formatDateToDDMMYYYY } from '@/utils/dayjs';
 export type ReviewInvoice = InvoiceEditData & { sourceFile: string };
 export type ReviewField = { key: string; label: string };
 const hiddenFields = new Set(['id', 'creationDate', 'modificationDate', 'ocrManagementId', 'scrapId', 'userId']);
+const summaryHiddenFields = new Set([...hiddenFields, 'quantity', 'ratePerKg']);
 const readonlyFields = new Set(['amount']);
 const numericFields = new Set(['quantity', 'ratePerKg', 'amount', 'grossAmount', 'taxableValue', 'igstRateAmount', 'totalTaxAmount', 'totalValue']);
 const lineFields = [
@@ -21,6 +22,44 @@ const displayValue = (value: unknown, key: string): string => {
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 };
+
+const toNumber = (value: unknown) => {
+  if (value == null || value === '') return 0;
+  const parsedValue = Number.parseFloat(String(value).replace(/,/g, ''));
+  return Number.isNaN(parsedValue) ? 0 : parsedValue;
+};
+
+const formatIndianNumber = (value: unknown) => {
+  if (value == null || value === '') return '—';
+  const numericValue = toNumber(value);
+  return numericValue.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+};
+
+const inputNumberFormatter = (value: string | number | undefined) => {
+  if (value == null || value === '') return '';
+  return toNumber(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+};
+
+const inputNumberParser = (value: string | undefined) => (
+  value ? value.replace(/,/g, '') : ''
+);
+
+const calculateMaterialAmount = (materialDescription: unknown) => {
+  if (!Array.isArray(materialDescription)) return 0;
+
+  return materialDescription.reduce((total, line) => {
+    if (!line || typeof line !== 'object') return total;
+    return total + toNumber((line as Record<string, unknown>).amount);
+  }, 0);
+};
+
+const displayAmount = (value: number) => (
+  value ? formatIndianNumber(value) : '—'
+);
+
+const displayFieldValue = (value: unknown, key: string) => (
+  numericFields.has(key) ? formatIndianNumber(value) : displayValue(value, key)
+);
 
 // OCR deployments return either invoice records directly or inside a list wrapper.
 export const extractReviewInvoices = (response: unknown, sourceFile: string): ReviewInvoice[] => {
@@ -78,10 +117,13 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
   const savingRef = useRef(false);
   const [form] = Form.useForm<InvoiceEditData>();
   const invoice = invoices[activeIndex];
+  const editedMaterialDescription = Form.useWatch('materialDescription', form);
+  const materialAmount = calculateMaterialAmount(invoice.materialDescription);
+  const editedMaterialAmount = calculateMaterialAmount(editedMaterialDescription ?? invoice.materialDescription);
   const hasMultipleInvoices = invoices.length > 1;
   const startEditing = () => {
     form.resetFields();
-    form.setFieldsValue(invoice);
+    form.setFieldsValue({ ...invoice, amount: materialAmount });
     setEditing(true);
   };
   const cancelEditing = () => {
@@ -97,15 +139,18 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
+    const materialDescriptionAmount = calculateMaterialAmount(values.materialDescription);
+    const nextValues = { ...values, amount: materialDescriptionAmount };
+
     try {
-      await updateInvoiceDetails(values);
+      await updateInvoiceDetails(nextValues);
     } catch {
       message.error('Failed to save invoice. Please try again.');
       setSaving(false);
       savingRef.current = false;
       return;
     }
-    onChange(invoices.map((item, index) => index === activeIndex ? { ...item, ...values } : item));
+    onChange(invoices.map((item, index) => index === activeIndex ? { ...item, ...nextValues } : item));
     setEditing(false);
     message.success('Invoice updated successfully');
     try {
@@ -135,14 +180,24 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
         {editing ? (
           <Form form={form} layout="vertical" onFinish={save} disabled={saving}>
             <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-2">
-              {fields.filter(field => field.key !== 'materialDescription' && !hiddenFields.has(field.key)).map(field => (
-                <Form.Item key={field.key} name={field.key} label={field.label}
-                  rules={field.key === 'invoiceNumber' ? [{ required: true, whitespace: true, message: 'Enter an invoice number' }] : []}>
-                  {readonlyFields.has(field.key) ? <Input disabled /> : numericFields.has(field.key)
-                    ? <InputNumber className="w-full" /> : ['shipTo', 'billTo'].includes(field.key)
-                      ? <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /> : <Input />}
-                </Form.Item>
-              ))}
+              {fields.filter(field => field.key !== 'materialDescription' && !summaryHiddenFields.has(field.key)).map(field => {
+                if (field.key === 'amount') {
+                  return (
+                    <Form.Item key={field.key} label={field.label}>
+                      <Input disabled value={displayAmount(editedMaterialAmount)} />
+                    </Form.Item>
+                  );
+                }
+
+                return (
+                  <Form.Item key={field.key} name={field.key} label={field.label}
+                    rules={field.key === 'invoiceNumber' ? [{ required: true, whitespace: true, message: 'Enter an invoice number' }] : []}>
+                    {readonlyFields.has(field.key) ? <Input disabled /> : numericFields.has(field.key)
+                      ? <InputNumber className="w-full" formatter={inputNumberFormatter} parser={inputNumberParser} /> : ['shipTo', 'billTo'].includes(field.key)
+                        ? <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /> : <Input />}
+                  </Form.Item>
+                );
+              })}
             </div>
             <h3 className="mb-4 text-base font-semibold text-slate-800">Material Description</h3>
             <Form.List name="materialDescription">{(lineItems) => <div className="space-y-4">{lineItems.map(line => (
@@ -151,7 +206,7 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
                 <div className="mb-3 font-medium text-slate-600">Material {line.name + 1}</div>
                 <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">{lineFields.map(field => (
                   <Form.Item key={field.key} name={[line.name, field.key]} label={field.label}>
-                    {numericFields.has(field.key) ? <InputNumber className="w-full" /> : <Input />}
+                    {numericFields.has(field.key) ? <InputNumber className="w-full" formatter={inputNumberFormatter} parser={inputNumberParser} /> : <Input />}
                   </Form.Item>
                 ))}</div>
               </div>
@@ -161,14 +216,14 @@ export default function UploadedInvoiceReview({ invoices, fields, onChange, onCo
           <>
             <Descriptions bordered size="small" column={{ xs: 1, sm: 2, md: 2, lg: 2, xl: 2, xxl: 2 }}
               styles={{ label: { color: '#64748b' }, content: { overflowWrap: 'anywhere' } }}
-              items={fields.filter(field => field.key !== 'materialDescription' && !hiddenFields.has(field.key)).map(field => ({
-                key: field.key, label: field.label, children: displayValue(invoice[field.key], field.key),
+              items={fields.filter(field => field.key !== 'materialDescription' && !summaryHiddenFields.has(field.key)).map(field => ({
+                key: field.key, label: field.label, children: field.key === 'amount' ? displayAmount(materialAmount) : displayFieldValue(invoice[field.key], field.key),
               }))} />
             <h3 className="mb-3 mt-6 text-base font-semibold text-slate-800">Material Description</h3>
             <div className="space-y-3">{invoice.materialDescription.length ? invoice.materialDescription.map((line, index) => (
               <Descriptions key={index} title={`Material ${index + 1}`} bordered size="small" column={{ xs: 1, sm: 2, md: 2, lg: 2, xl: 2, xxl: 2 }}
                 styles={{ content: { overflowWrap: 'anywhere' } }}
-                items={lineFields.map(field => ({ key: field.key, label: field.label, children: displayValue(line[field.key], field.key) }))} />
+                items={lineFields.map(field => ({ key: field.key, label: field.label, children: displayFieldValue(line[field.key], field.key) }))} />
             )) : <p className="text-slate-400">—</p>}</div>
           </>
         )}

@@ -19,7 +19,7 @@ import { downloadFileFromUrl } from '@/utils/customFunctions';
 import { formatDateToDDMMYYYY } from '@/utils/dayjs';
 import { materialTypesList } from './dashboard.description';
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
 const REPORT_HISTORY_PAGE_SIZE = 10;
 
 interface DispatchInvoiceRow extends DispatchInvoiceDetailsItem {
@@ -137,7 +137,7 @@ const DispatchInvoiceDetails = ({ materialOptions = [], dateFrom, dateTo, scrapC
       fromDate: formattedFromDate,
       toDate: formattedToDate,
       pageSize: PAGE_SIZE,
-      recyclerInvoice: false,
+      recyclerInvoice: true,
       ...(scrapCategory.trim() ? { searchTag: 'SCRAP_ITEM_CATEGORY', search: scrapCategory.trim() } : {}),
       ...(materialType ? { materialType } : {}),
     };

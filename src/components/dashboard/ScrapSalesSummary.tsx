@@ -57,7 +57,7 @@ const getOcrUuids = (response: unknown) => {
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_INVOICE_UPLOAD_COUNT = 10;
-const DEFAULT_PAGE_SIZE = 5;
+const DEFAULT_PAGE_SIZE = 10;
 const SCRAP_CATEGORY_DEBOUNCE_MS = 500;
 const SCRAP_RATE_LINE_COLOR = '#20A35A';
 const SECTION_DATE_FORMAT = 'YYYY/MM/DD';
@@ -316,6 +316,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     return {
       fromDate: invoiceFromDate,
       toDate: invoiceToDate,
+      recyclerInvoice: true,
       pageSize: DEFAULT_PAGE_SIZE,
       ...(trimmedScrapCategory ? { searchTag: 'SCRAP_ITEM_CATEGORY', search: trimmedScrapCategory } : {}),
     };
@@ -1051,7 +1052,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
               pagination={{
                 current: topBuyersData.pageNo,
                 total: topBuyersData.fullCount,
-                pageSize: DEFAULT_PAGE_SIZE,
+                pageSize: 5,
                 hideOnSinglePage: true,
                 showSizeChanger: false,
                 onChange: (page) => {

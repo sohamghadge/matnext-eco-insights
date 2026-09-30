@@ -28,7 +28,7 @@ import { AppButton, AppDatePicker, AppInput, AppModal, AppTable } from '@/compon
 import { dayJs, formatDateToDDMMYYYY } from '@/utils/dayjs';
 import type { FilterState } from '@/data/dashboardData';
 import type { TagItem } from '@/services/dashboardApi';
-import { categoryDistributionColors, materialTypesList, numberFormatting } from './dashboard.description';
+import { categoryDistributionColors, numberFormatting } from './dashboard.description';
 import DispatchInvoiceDetails from './DispatchInvoiceDetails';
 import UploadedInvoiceReview, { extractReviewInvoices, type ReviewInvoice } from './UploadedInvoiceReview';
 
@@ -245,24 +245,6 @@ const invoiceReviewFields = [
   { key: 'totalValue', label: 'Total Amount' },
 ];
 
-const buildScrapSalesMetricsPayload = (
-  filters: FilterState,
-  dateFrom: Date | null,
-  dateTo: Date | null,
-  materialOptions: TagItem[],
-  scrapCategory: string,
-): ScrapSalesMetricsParams => {
-  const selectedMaterials = materialOptions?.filter(v => filters?.materials?.includes(v?.id))?.map(v => v?.name)?.map(v => materialTypesList?.[v] || 'OTHER');
-  const materialTypes = [...new Set(selectedMaterials)];
-  const trimmedScrapCategory = scrapCategory.trim();
-  return {
-    fromDate: formatDateToDDMMYYYY(dateFrom) ?? '',
-    toDate: formatDateToDDMMYYYY(dateTo) ?? '',
-    materialType: materialTypes.join(','),
-    ...(trimmedScrapCategory ? { searchTag: 'SCRAP_ITEM_CATEGORY', search: trimmedScrapCategory } : {}),
-  };
-};
-
 const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryProps) => {
   const [invoices, setInvoices] = useState<InvoiceHistoryRow[]>([]);
   const [reviewInvoices, setReviewInvoices] = useState<ReviewInvoice[]>([]);
@@ -322,19 +304,15 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     };
   }, [invoiceFromDate, invoiceToDate, trimmedScrapCategory]);
 
-  const selectedMaterialTypes = buildScrapSalesMetricsPayload(
-    filters, invoiceDateFrom, invoiceDateTo, materialOptions, scrapCategory,
-  ).materialType;
   // Depend on request values so parent renders cannot trigger duplicate requests.
   const scrapSalesMetricsPayload = useMemo<ScrapSalesMetricsParams | null>(() => {
     if (!invoiceFromDate || !invoiceToDate) return null;
     return {
       fromDate: invoiceFromDate,
       toDate: invoiceToDate,
-      materialType: selectedMaterialTypes,
       ...(trimmedScrapCategory ? { searchTag: 'SCRAP_ITEM_CATEGORY', search: trimmedScrapCategory } : {}),
     };
-  }, [invoiceFromDate, invoiceToDate, selectedMaterialTypes, trimmedScrapCategory]);
+  }, [invoiceFromDate, invoiceToDate, trimmedScrapCategory]);
 
   const loadInvoiceHistory = useCallback(async (pageNo: number) => {
     if (!invoiceParams) return false;
@@ -378,7 +356,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   const loadTopBuyers = useCallback(async (pageNo: number) => {
     const requestToken = Symbol('topBuyersRequest');
 
-    if (!scrapSalesMetricsPayload || !filters.materials.length) {
+    if (!scrapSalesMetricsPayload) {
       setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
       return false;
     }
@@ -406,10 +384,10 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
       ));
       return false;
     }
-  }, [filters.materials.length, scrapSalesMetricsPayload]);
+  }, [scrapSalesMetricsPayload]);
 
   const loadScrapSalesMetrics = useCallback(async () => {
-    if (!scrapSalesMetricsPayload || !filters.materials.length) {
+    if (!scrapSalesMetricsPayload) {
       setGraphData(INITIAL_GRAPH_DATA);
       setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
       return false;
@@ -449,7 +427,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
       console.error('Scrap Sales metrics API error:', error);
       return false;
     }
-  }, [filters.materials.length, loadTopBuyers, scrapSalesMetricsPayload]);
+  }, [loadTopBuyers, scrapSalesMetricsPayload]);
 
   useEffect(() => {
     if (invoiceReviewInProgress.current) return;
@@ -457,10 +435,10 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
   }, [loadScrapSalesMetrics]);
 
   useEffect(() => {
-    if (!scrapSalesMetricsPayload || !filters.materials.length) {
+    if (!scrapSalesMetricsPayload) {
       setTopBuyersData(INITIAL_TOP_BUYERS_DATA);
     }
-  }, [filters.materials.length, scrapSalesMetricsPayload]);
+  }, [scrapSalesMetricsPayload]);
 
   useEffect(() => {
     if (!selectedInvoice) return;

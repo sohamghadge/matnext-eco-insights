@@ -39,7 +39,6 @@ export type GenerateUserReportPayload = {
 export type ScrapSalesAverageRateParams = {
   fromDate: string;
   toDate: string;
-  materialType: string;
   searchTag?: 'SCRAP_ITEM_CATEGORY';
   search?: string;
 };
@@ -47,7 +46,6 @@ export type ScrapSalesAverageRateParams = {
 export type topBuyersRateParams = {
   fromDate: string;
   toDate: string;
-  materialType: string;
   pageSize: number;
   searchTag?: 'SCRAP_ITEM_CATEGORY';
   search?: string;

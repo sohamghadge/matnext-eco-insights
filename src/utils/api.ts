@@ -59,6 +59,7 @@ export type InvoiceDetailsListParams = {
   fromDate: string;
   toDate: string;
   pageSize?: number;
+  recyclerInvoice?: boolean;
   searchTag?: 'SCRAP_ITEM_CATEGORY';
   search?: string;
 };

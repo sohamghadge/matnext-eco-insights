@@ -263,7 +263,8 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
     return {
       fromDate: invoiceFromDate,
       toDate: invoiceToDate,
-      pageSize: DEFAULT_PAGE_SIZE,
+      pageSize: 10,
+      recyclerInvoice: true,
       ...(trimmedScrapCategory ? { searchTag: 'SCRAP_ITEM_CATEGORY', search: trimmedScrapCategory } : {}),
     };
   }, [invoiceFromDate, invoiceToDate, trimmedScrapCategory]);
@@ -829,7 +830,7 @@ const ScrapSalesSummary = ({ filters, materialOptions = [] }: ScrapSalesSummaryP
               pagination={{
                 current: invoicePage,
                 total: paginationTotal,
-                pageSize: DEFAULT_PAGE_SIZE,
+                pageSize: 10,
                 hideOnSinglePage: true,
                 showSizeChanger: false,
                 onChange: (page) => {

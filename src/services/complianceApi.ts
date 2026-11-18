@@ -2,14 +2,19 @@ import type { ApiError } from './apiClient';
 import { get } from './apiMethods';
 import { API_ROUTES } from './apiRoutes';
 
+export type QuantitativeTarget = string | {
+    target?: string;
+    prediction?: Record<string, string> | null;
+} | null;
+
 export interface ComplianceRecord {
     id: number;
     formalName: string;
     countryRegion: string;
     targetYear: string | null;
     status: string;
-    material: string | null;
-    quantitativeTarget: string | null;
+    material: string | string[] | null;
+    quantitativeTarget: QuantitativeTarget;
     officialSource: string | null;
     issuingAuthority: string | null;
     dateOfIssue: string | null;

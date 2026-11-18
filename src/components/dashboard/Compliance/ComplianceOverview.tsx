@@ -2,6 +2,7 @@ import { Card, Typography, Tag, Progress, Statistic, Table, Button, Modal, Selec
 import { Car, CheckCircle, AlertTriangle, Calendar, ChevronRight, Info, ImageOff, Globe, Filter, Search, Recycle, Settings } from 'lucide-react';
 import { RegulatoryData, ComplianceStat, ModelComplianceData, PartComplianceData, EPRPartData } from '@/data/regulatoryData';
 import { useState, useMemo } from 'react';
+import ComplianceLandscapeTable from './ComplianceLandscapeTable';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -606,6 +607,8 @@ const regulatoryLandscapeData = [
         lastVerified: '2026-03-31',
     },
 ];
+
+export type RegulatoryLandscapeRecord = typeof regulatoryLandscapeData[number];
 
 const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
     const [selectedModel, setSelectedModel] = useState<ModelComplianceData | null>(null);
@@ -1286,6 +1289,8 @@ const ComplianceOverview = ({ data }: ComplianceOverviewProps) => {
                     <div key={idx}>{renderStatCard(stat)}</div>
                 ))}
             </div>
+
+            <ComplianceLandscapeTable />
 
             {/* 2. Regulatory Landscape */}
             <Card title="Regulatory Landscape" className="shadow-sm border-gray-200" headStyle={{ borderBottom: '1px solid #f0f0f0' }}>

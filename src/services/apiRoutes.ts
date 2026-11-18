@@ -1,4 +1,5 @@
 export const API_ROUTES = {
+    COMPLIANCE: (pageNo: number) => `/job-management/v1/compliance/${pageNo}`,
     MATERIAL_LIST: `/user-management/v1/tags`,
     MATERIAL_TARGET_TILE: `/dashboard-management/v1/tiles/materialtype`,
     MATERIAL_TARGET: `/job-management/v1/material-fiscal-year-target`,

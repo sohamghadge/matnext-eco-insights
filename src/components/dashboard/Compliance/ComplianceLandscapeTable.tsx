@@ -3,7 +3,9 @@ import { Button, Card, Modal, Table, Typography } from 'antd';
 import { ArrowUpRight, CircleCheck, Clock3, LoaderCircle, ShieldCheck, FileText, CalendarDays, History, BookOpen, Target, TrendingUp } from 'lucide-react';
 import type { TableColumnsType } from 'antd';
 import type { RegulatoryLandscapeRecord } from './ComplianceOverview';
-import { getComplianceApi } from '@/services/complianceApi';
+import { getComplianceApi, type QuantitativeTarget } from '@/services/complianceApi';
+import { MaterialBadges } from './MaterialBadge';
+import QuantitativeTargetTable from './QuantitativeTargetTable';
 
 interface ManagedCompliance {
     id: number;
@@ -13,7 +15,19 @@ interface ManagedCompliance {
     regulationType: string;
     timeline: string;
     status: string;
-    regulatoryDetails?: RegulatoryLandscapeRecord;
+    regulatoryDetails?: Omit<RegulatoryLandscapeRecord, 'material' | 'quantitativeTarget'> & {
+        material: string | string[] | null;
+        quantitativeTarget: QuantitativeTarget;
+    };
+}
+
+function splitFormalName(name: string) {
+    const separator = name.indexOf(':');
+    if (separator === -1) return { title: name, details: name };
+
+    const title = name.slice(0, separator).trim();
+    const details = name.slice(separator + 1).trim();
+    return { title: title || name, details: details || title || name };
 }
 
 // Static record mapping retained for reference.
@@ -234,7 +248,7 @@ export default function ComplianceLandscapeTable() {
                         countryRegion: record.countryRegion,
                         targetYear: record.targetYear || '-',
                         status: record.status,
-                        material: record.material || '-',
+                        material: record.material,
                         quantitativeTarget: record.quantitativeTarget || '-',
                         officialSourceTitle: record.officialSource || '-',
                         officialSourceURL: record.sourceUrl || '',
@@ -265,7 +279,7 @@ export default function ComplianceLandscapeTable() {
         { title: '#', key: 'index', width: '3%', align: 'center', render: (_, __, index) => index + 1 },
         {
             title: 'Compliance Formal Name', dataIndex: 'formalName', width: '18%',
-            render: (name: string) => <span className="text-xs font-medium text-gray-800">{name}</span>,
+            render: (name: string) => <span className="text-xs font-medium text-gray-800">{splitFormalName(name).title}</span>,
         },
         {
             title: 'Final Draft Link', key: 'source', width: '8%',
@@ -322,23 +336,23 @@ export default function ComplianceLandscapeTable() {
                 footer={<Button onClick={() => setSelectedCompliance(null)}>Close</Button>}
                 width={1000}
                 centered
-                styles={{ body: { paddingTop: 12 }, footer: { borderTop: '1px solid #f0f0f0', paddingTop: 16 } }}
+                styles={{ body: { paddingTop: 8 }, footer: { borderTop: '1px solid #f0f0f0', paddingTop: 8 } }}
             >
                 {selectedCompliance && (
-                    <div className="space-y-5 overflow-y-auto pr-2 [overflow-wrap:anywhere]" style={{ maxHeight: '70vh' }}>
-                        <section className="rounded-2xl border border-[#dfe7d5] bg-gradient-to-br from-[#f2f6eb] to-white p-5 sm:p-6">
-                            <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <div className="space-y-3 overflow-y-auto pr-1 [overflow-wrap:anywhere]" style={{ maxHeight: '70vh' }}>
+                        <section className="rounded-2xl border border-[#dfe7d5] bg-gradient-to-br from-[#f2f6eb] to-white p-3 sm:p-4">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
                                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#5a7a32] text-white">
                                     <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                                 </span>
                                 <span className="text-xs font-semibold uppercase tracking-widest text-[#5a7a32]">Compliance record #{selectedCompliance.id}</span>
                                 {renderCountry(selectedCompliance.country)}
                             </div>
-                            <h2 className="m-0 text-lg font-semibold leading-relaxed text-gray-900 sm:text-xl">{selectedCompliance.formalName}</h2>
-                            <p className="mb-0 mt-3 text-sm text-gray-600">{selectedCompliance.regulationType}</p>
+                            <h2 className="m-0 text-lg font-semibold leading-relaxed text-gray-900 sm:text-xl">{splitFormalName(selectedCompliance.formalName).details}</h2>
+                            <p className="mb-0 mt-1 text-sm text-gray-600">{selectedCompliance.regulationType}</p>
                         </section>
 
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                             <div className="rounded-xl border border-gray-200 bg-white p-4">
                                 <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">Status in MSIL</p>
                                 {renderStatus(selectedCompliance.status)}
@@ -353,22 +367,26 @@ export default function ComplianceLandscapeTable() {
                             </div>
                         </div>
 
-                        <section className="rounded-xl border border-blue-100 bg-blue-50/50 p-5">
+                        <section className="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
                             <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-900"><CalendarDays className="h-4 w-4" aria-hidden="true" />Timeline / Deadline</h3>
                             <p className="m-0 text-sm leading-7 text-gray-700">{selectedCompliance.timeline}</p>
                         </section>
 
                         {selectedCompliance.regulatoryDetails && detailSections.map(({ title, icon: Icon, fields }) => (
-                            <section key={title} className="rounded-xl border border-gray-200 bg-white p-5">
-                                <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold text-gray-900">
+                            <section key={title} className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4">
+                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
                                     <Icon className="h-4 w-4 text-[#5a7a32]" aria-hidden="true" />{title}
                                 </h3>
-                                <dl className={`m-0 grid gap-5 ${title === 'Dates & milestones' || title === 'Regulatory profile' ? 'sm:grid-cols-2' : ''}`}>
+                                <dl className={`m-0 grid gap-x-4 gap-y-3 ${title === 'Regulatory profile' ? 'sm:grid-cols-3' : title === 'Dates & milestones' ? 'sm:grid-cols-2' : ''}`}>
                                     {fields.map(key => (
-                                        <div key={key} className="min-w-0">
-                                            <dt className="mb-1.5 text-xs font-medium text-gray-500">{detailLabels[key]}</dt>
-                                            <dd className="m-0 text-sm leading-7 text-gray-800">
-                                                {key === 'officialSourceURL' && selectedCompliance.regulatoryDetails[key]
+                                        <div key={key} className={key === 'material' || key === 'relevance' ? 'col-span-full min-w-0' : 'min-w-0'}>
+                                            <dt className="mb-1 text-xs font-medium text-gray-500">{detailLabels[key]}</dt>
+                                            <dd className="m-0 text-sm leading-5 text-gray-800">
+                                                {key === 'material'
+                                                    ? <MaterialBadges material={selectedCompliance.regulatoryDetails.material} />
+                                                    : key === 'quantitativeTarget'
+                                                    ? <QuantitativeTargetTable value={selectedCompliance.regulatoryDetails.quantitativeTarget} />
+                                                    : key === 'officialSourceURL' && selectedCompliance.regulatoryDetails[key]
                                                     ? <a href={selectedCompliance.regulatoryDetails[key]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{selectedCompliance.regulatoryDetails[key]}</a>
                                                     : selectedCompliance.regulatoryDetails[key] || '-'}
                                             </dd>
